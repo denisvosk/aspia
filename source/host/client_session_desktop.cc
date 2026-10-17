@@ -29,6 +29,7 @@
 #include "base/desktop/frame.h"
 #include "base/desktop/screen_capturer.h"
 #include "common/desktop_session_constants.h"
+#include "common/clipboard_file_transfer.h"
 #include "host/desktop_session_proxy.h"
 #include "host/service_constants.h"
 #include "host/system_settings.h"
@@ -77,6 +78,7 @@ ClientSessionDesktop::ClientSessionDesktop(proto::SessionType session_type,
 //--------------------------------------------------------------------------------------------------
 ClientSessionDesktop::~ClientSessionDesktop()
 {
+    disconnectFileClipboard();
     LOG(LS_INFO) << "Dtor";
 }
 
@@ -138,6 +140,9 @@ void ClientSessionDesktop::onStarted()
 
 #if defined(OS_WIN)
     capabilities->set_os_type(proto::DesktopCapabilities::OS_TYPE_WINDOWS);
+    add_flag(common::kFileClipboardCapability,
+        sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE &&
+        (allowedSessionTypes() & proto::SESSION_TYPE_FILE_TRANSFER));
 #elif defined(OS_LINUX)
     capabilities->set_os_type(proto::DesktopCapabilities::OS_TYPE_LINUX);
 
@@ -232,7 +237,7 @@ void ClientSessionDesktop::onReceived(uint8_t /* channel_id */, const base::Byte
     {
         if (sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE)
         {
-            desktop_session_proxy_->injectClipboardEvent(incoming_message_->clipboard_event());
+            readClipboard(incoming_message_->clipboard_event());
             stat_counter_.addIncomingClipboardEvent();
         }
         else
@@ -446,6 +451,13 @@ void ClientSessionDesktop::setScreenList(const proto::ScreenList& list)
 //--------------------------------------------------------------------------------------------------
 void ClientSessionDesktop::setScreenType(const proto::ScreenType& type)
 {
+    if (file_clipboard_enabled_ && desktop_session_proxy_)
+    {
+        proto::ClipboardFile message;
+        message.set_type(proto::ClipboardFile::HELLO);
+        message.set_peer_id(id());
+        desktop_session_proxy_->injectClipboardEvent(common::fileClipboardEvent(message));
+    }
     LOG(LS_INFO) << "Send screen type to client";
 
     outgoing_message_->Clear();
@@ -459,6 +471,18 @@ void ClientSessionDesktop::setScreenType(const proto::ScreenType& type)
 //--------------------------------------------------------------------------------------------------
 void ClientSessionDesktop::injectClipboardEvent(const proto::ClipboardEvent& event)
 {
+    if (event.mime_type() == common::kFileClipboardMime)
+    {
+        proto::ClipboardFile message;
+        if (!file_clipboard_enabled_ || !clipboard_enabled_ ||
+            !common::parseFileClipboard(event, &message) || message.peer_id() != id()) return;
+        // Never expose internal routing IDs to the client.
+        message.set_peer_id(0);
+        outgoing_message_->Clear();
+        *outgoing_message_->mutable_clipboard_event() = common::fileClipboardEvent(message);
+        sendMessage(proto::HOST_CHANNEL_ID_SESSION, *outgoing_message_);
+        return;
+    }
     if (sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE)
     {
         outgoing_message_->Clear();
@@ -598,6 +622,8 @@ void ClientSessionDesktop::readConfig(const proto::DesktopConfig& config)
     LOG(LS_INFO) << "Clear clipboard: " << desktop_session_config_.clear_clipboard;
     LOG(LS_INFO) << "Cursor position: " << desktop_session_config_.cursor_position;
 
+    clipboard_enabled_ = (config.flags() & proto::ENABLE_CLIPBOARD) != 0;
+    if (!clipboard_enabled_) disconnectFileClipboard();
     delegate_->onClientSessionConfigured();
 }
 
@@ -1057,6 +1083,39 @@ void ClientSessionDesktop::upStepOverflow()
             forced_size_ = new_forced_size;
         }
     }
+}
+
+void ClientSessionDesktop::disconnectFileClipboard()
+{
+    if (!file_clipboard_enabled_) return;
+    file_clipboard_enabled_ = false;
+    if (desktop_session_proxy_)
+    {
+        proto::ClipboardFile message;
+        message.set_type(proto::ClipboardFile::DISCONNECT);
+        message.set_peer_id(id());
+        desktop_session_proxy_->injectClipboardEvent(common::fileClipboardEvent(message));
+    }
+}
+
+void ClientSessionDesktop::readClipboard(const proto::ClipboardEvent& event)
+{
+    if (!desktop_session_proxy_) return;
+    if (event.mime_type() != common::kFileClipboardMime)
+    {
+        desktop_session_proxy_->injectClipboardEvent(event);
+        return;
+    }
+#if defined(OS_WIN)
+    if (!clipboard_enabled_ || !(allowedSessionTypes() & proto::SESSION_TYPE_FILE_TRANSFER)) return;
+    proto::ClipboardFile message;
+    if (!common::parseFileClipboard(event, &message)) return;
+    if (message.type() == proto::ClipboardFile::HELLO) file_clipboard_enabled_ = true;
+    // DISCONNECT is a service control, never accepted as a peer's routing command.
+    else if (!file_clipboard_enabled_ || message.type() == proto::ClipboardFile::DISCONNECT) return;
+    message.set_peer_id(id());
+    desktop_session_proxy_->injectClipboardEvent(common::fileClipboardEvent(message));
+#endif
 }
 
 } // namespace host

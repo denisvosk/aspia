@@ -89,6 +89,8 @@ private:
     void readExtension(const proto::DesktopExtension& extension);
 
     bool started_ = false;
+    bool file_clipboard_supported_ = false;
+    bool file_clipboard_enabled_ = false;
 
     std::shared_ptr<DesktopControlProxy> desktop_control_proxy_;
     std::shared_ptr<DesktopWindowProxy> desktop_window_proxy_;

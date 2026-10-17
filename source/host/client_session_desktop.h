@@ -81,6 +81,11 @@ protected:
 #endif // defined(OS_WIN)
 
 private:
+    void readClipboard(const proto::ClipboardEvent& event);
+    void disconnectFileClipboard();
+    bool clipboard_enabled_ = false;
+    bool file_clipboard_enabled_ = false;
+
     void readExtension(const proto::DesktopExtension& extension);
     void readConfig(const proto::DesktopConfig& config);
     void readSelectScreenExtension(const std::string& data);

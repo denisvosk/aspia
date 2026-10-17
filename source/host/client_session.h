@@ -82,6 +82,8 @@ public:
     const std::string& displayName() const;
 
     proto::SessionType sessionType() const { return session_type_; }
+    void setAllowedSessionTypes(uint32_t types) { allowed_session_types_ = types; }
+    uint32_t allowedSessionTypes() const { return allowed_session_types_; }
 
     void setSessionId(base::SessionId session_id);
     base::SessionId sessionId() const { return session_id_; }
@@ -115,6 +117,7 @@ private:
     base::SessionId session_id_ = base::kInvalidSessionId;
     State state_ = State::CREATED;
     uint32_t id_;
+    uint32_t allowed_session_types_ = 0;
     proto::SessionType session_type_;
     base::Version version_;
     std::string username_;

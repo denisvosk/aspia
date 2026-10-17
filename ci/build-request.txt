@@ -1,1 +1,1 @@
-Baseline: verify the original 2.7 Windows toolchain before adding clipboard files.
+Build the first clipboard-file implementation and run protocol/OLE tests.

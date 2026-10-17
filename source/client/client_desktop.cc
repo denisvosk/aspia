@@ -32,6 +32,7 @@
 #include "client/desktop_window_proxy.h"
 #include "client/config_factory.h"
 #include "common/desktop_session_constants.h"
+#include "common/clipboard_file_transfer.h"
 
 namespace client {
 
@@ -213,6 +214,7 @@ void ClientDesktop::onSessionMessageWritten(uint8_t /* channel_id */, size_t pen
 //--------------------------------------------------------------------------------------------------
 void ClientDesktop::onClipboardEvent(const proto::ClipboardEvent& event)
 {
+    if (event.mime_type() == common::kFileClipboardMime && !file_clipboard_enabled_) return;
     std::optional<proto::ClipboardEvent> out_event = input_event_filter_.sendClipboardEvent(event);
     if (!out_event.has_value())
         return;
@@ -250,6 +252,19 @@ void ClientDesktop::setDesktopConfig(const proto::DesktopConfig& desktop_config)
 
     LOG(LS_INFO) << "Send new config to host";
     sendMessage(proto::HOST_CHANNEL_ID_SESSION, *outgoing_message_);
+#if defined(OS_WIN)
+    const bool enabled = file_clipboard_supported_ &&
+        sessionState()->sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE &&
+        (desktop_config_.flags() & proto::ENABLE_CLIPBOARD);
+    if (enabled != file_clipboard_enabled_ && clipboard_monitor_)
+    {
+        file_clipboard_enabled_ = enabled;
+        proto::ClipboardFile message;
+        message.set_type(enabled ? proto::ClipboardFile::HELLO : proto::ClipboardFile::DISCONNECT);
+        clipboard_monitor_->injectClipboardEvent(common::fileClipboardEvent(message));
+        if (enabled) onClipboardEvent(common::fileClipboardEvent(message));
+    }
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -552,6 +567,12 @@ void ClientDesktop::onMetricsRequest()
 void ClientDesktop::readCapabilities(const proto::DesktopCapabilities& capabilities)
 {
     LOG(LS_INFO) << "Capabilities received";
+    file_clipboard_supported_ = false;
+#if defined(OS_WIN)
+    for (const auto& flag : capabilities.flag())
+        if (flag.name() == common::kFileClipboardCapability && flag.value())
+            file_clipboard_supported_ = true;
+#endif
 
     // We notify the window about changes in the list of extensions and video encodings.
     // A window can disable/enable some of its capabilities in accordance with this information.
@@ -748,6 +769,13 @@ void ClientDesktop::readCursorPosition(const proto::CursorPosition& cursor_posit
 //--------------------------------------------------------------------------------------------------
 void ClientDesktop::readClipboardEvent(const proto::ClipboardEvent& event)
 {
+    if (event.mime_type() == common::kFileClipboardMime)
+    {
+        proto::ClipboardFile message;
+        if (!file_clipboard_enabled_ || !common::parseFileClipboard(event, &message) ||
+            message.peer_id() != 0 || message.type() == proto::ClipboardFile::HELLO ||
+            message.type() == proto::ClipboardFile::DISCONNECT) return;
+    }
     if (!clipboard_monitor_)
     {
         LOG(LS_ERROR) << "Clipboard received not disabled in client";

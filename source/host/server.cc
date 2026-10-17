@@ -220,6 +220,7 @@ void Server::onNewSession(base::ServerAuthenticatorManager::SessionInfo&& sessio
         session->setComputerName(session_info.computer_name);
         session->setDisplayName(session_info.display_name);
         session->setUserName(session_info.user_name);
+        session->setAllowedSessionTypes(session_info.allowed_session_types);
     }
     else
     {

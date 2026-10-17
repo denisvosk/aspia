@@ -18,6 +18,7 @@
 
 list(APPEND SOURCE_PROTO
     address_book.proto
+    clipboard_file.proto
     common.proto
     desktop.proto
     desktop_extensions.proto

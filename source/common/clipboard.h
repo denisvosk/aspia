@@ -48,6 +48,8 @@ protected:
     virtual void init() = 0;
     virtual void setData(const std::string& data) = 0;
     void onData(const std::string& data);
+    virtual void setFileData(const proto::ClipboardEvent&) {}
+    void sendEvent(const proto::ClipboardEvent& event);
 
 private:
     Delegate* delegate_ = nullptr;

@@ -57,8 +57,13 @@ jobs:
         run: |
           $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
           $pkg = Get-Command pkg-config.exe -ErrorAction SilentlyContinue
-          if (!$pkg) { throw 'A system pkg-config is required by the archived vcpkg ports.' }
-          $env:PKG_CONFIG = $pkg.Source
+          if (!$pkg) {
+            choco install pkgconfiglite --version=0.28.0 --yes --no-progress --limit-output
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            $pkgFile = Get-ChildItem 'C:/ProgramData/chocolatey/lib/pkgconfiglite' -Filter pkg-config.exe -Recurse | Select-Object -First 1
+            if (!$pkgFile) { throw 'pkg-config installation failed' }
+            $env:PKG_CONFIG = $pkgFile.FullName
+          } else { $env:PKG_CONFIG = $pkg.Source }
           Write-Host "Using pkg-config: $env:PKG_CONFIG"
           cmake --preset ninja-multi-vcpkg-ci -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/ci/triplets"
       - uses: actions/cache/save@v4

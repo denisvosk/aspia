@@ -17,6 +17,7 @@
 //
 
 #include "common/clipboard.h"
+#include "common/clipboard_file_transfer.h"
 
 #include "base/logging.h"
 
@@ -114,6 +115,11 @@ void Clipboard::start(Delegate* delegate)
 //--------------------------------------------------------------------------------------------------
 void Clipboard::injectClipboardEvent(const proto::ClipboardEvent& event)
 {
+    if (event.mime_type() == kFileClipboardMime)
+    {
+        setFileData(event);
+        return;
+    }
     if (event.mime_type() == kMimeTypeCompressedTextUtf8)
     {
         std::string decompressed_data;
@@ -168,6 +174,11 @@ void Clipboard::onData(const std::string& data)
 
     if (delegate_)
         delegate_->onClipboardEvent(event);
+}
+
+void Clipboard::sendEvent(const proto::ClipboardEvent& event)
+{
+    if (delegate_) delegate_->onClipboardEvent(event);
 }
 
 } // namespace common

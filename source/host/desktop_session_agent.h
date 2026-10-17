@@ -27,6 +27,7 @@
 #include "base/threading/thread.h"
 #include "common/clipboard_monitor.h"
 #include "proto/desktop_internal.pb.h"
+#include <set>
 
 namespace base {
 
@@ -100,6 +101,7 @@ private:
     std::shared_ptr<base::TaskRunner> io_task_runner_;
 
     bool is_session_enabled_ = false;
+    std::set<uint32_t> clipboard_file_peers_;
 
 #if defined(OS_WIN)
     base::Thread ui_thread_;

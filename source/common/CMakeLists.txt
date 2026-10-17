@@ -21,6 +21,8 @@ include(translations)
 list(APPEND SOURCE_COMMON
     clipboard.cc
     clipboard.h
+    clipboard_file_transfer.cc
+    clipboard_file_transfer.h
     clipboard_monitor.cc
     clipboard_monitor.h
     desktop_session_constants.cc
@@ -61,6 +63,8 @@ if (WIN32)
     list(APPEND SOURCE_COMMON
         clipboard_win.cc
         clipboard_win.h
+        clipboard_files_win.cc
+        clipboard_files_win.h
         file_enumerator_win.cc
         file_platform_util_win.cc)
 endif()
@@ -135,6 +139,9 @@ target_link_libraries(aspia_common PRIVATE
     ${QT_COMMON_LIBS}
     ${QT_PLATFORM_LIBS}
     ${THIRD_PARTY_LIBS})
+if (WIN32)
+    target_link_libraries(aspia_common PRIVATE ole32 shell32 uuid)
+endif()
 set_property(TARGET aspia_common PROPERTY AUTOMOC ON)
 set_property(TARGET aspia_common PROPERTY AUTOUIC ON)
 set_property(TARGET aspia_common PROPERTY AUTORCC ON)
@@ -160,3 +167,11 @@ endif()
 add_custom_target(build_time_updater
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${PROJECT_SOURCE_DIR}/source/common/ui/about_dialog.cc)
 add_dependencies(aspia_common build_time_updater)
+
+add_executable(aspia_clipboard_tests clipboard_file_transfer_unittest.cc)
+target_link_libraries(aspia_clipboard_tests PRIVATE aspia_common GTest::gtest_main)
+if (WIN32)
+    target_sources(aspia_clipboard_tests PRIVATE clipboard_files_win_unittest.cc)
+    target_link_libraries(aspia_clipboard_tests PRIVATE crypt32 iphlpapi ws2_32)
+endif()
+add_test(NAME aspia_clipboard_tests COMMAND aspia_clipboard_tests)

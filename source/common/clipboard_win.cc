@@ -17,6 +17,7 @@
 //
 
 #include "common/clipboard_win.h"
+#include "common/clipboard_files_win.h"
 
 #include "base/logging.h"
 #include "base/strings/string_util.h"
@@ -44,6 +45,7 @@ ClipboardWin::~ClipboardWin()
         return;
     }
 
+    files_.reset();
     RemoveClipboardFormatListener(window_->hwnd());
     window_.reset();
 }
@@ -68,6 +70,9 @@ void ClipboardWin::init()
         return;
     }
 
+    files_ = std::make_unique<ClipboardFilesWin>(
+        [this](const proto::ClipboardEvent& event) { sendEvent(event); });
+
     if (!AddClipboardFormatListener(window_->hwnd()))
     {
         PLOG(LS_ERROR) << "AddClipboardFormatListener failed";
@@ -78,6 +83,7 @@ void ClipboardWin::init()
 //--------------------------------------------------------------------------------------------------
 void ClipboardWin::setData(const std::string& data)
 {
+    if (files_) files_->resetRemote();
     if (!window_)
     {
         LOG(LS_ERROR) << "Window not created";
@@ -146,6 +152,7 @@ bool ClipboardWin::onMessage(UINT message, WPARAM /* wParam */, LPARAM /* lParam
 //--------------------------------------------------------------------------------------------------
 void ClipboardWin::onClipboardUpdate()
 {
+    if (files_ && files_->onClipboardUpdate(window_->hwnd())) return;
     if (!IsClipboardFormatAvailable(CF_UNICODETEXT))
         return;
 
@@ -186,6 +193,12 @@ void ClipboardWin::onClipboardUpdate()
 
     if (!data.empty())
         onData(base::replaceCrLfByLf(data));
+}
+
+void ClipboardWin::setFileData(const proto::ClipboardEvent& event)
+{
+    proto::ClipboardFile message;
+    if (files_ && parseFileClipboard(event, &message)) files_->receive(message);
 }
 
 } // namespace common
