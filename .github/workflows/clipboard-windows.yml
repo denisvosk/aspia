@@ -36,8 +36,8 @@ jobs:
         id: cache
         with:
           path: C:/aspia-vcpkg-cache
-          key: aspia-27-v142-x86-7eb700c9-${{ github.run_id }}
-          restore-keys: aspia-27-v142-x86-7eb700c9-
+          key: aspia-27-v142-rel-x86-7eb700c9-${{ github.run_id }}
+          restore-keys: aspia-27-v142-rel-x86-7eb700c9-
       - name: Build tools
         shell: pwsh
         run: |
@@ -56,12 +56,16 @@ jobs:
       - name: Configure and build dependencies
         run: |
           $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
-          cmake --preset ninja-multi-vcpkg-ci
+          $pkg = Get-Command pkg-config.exe -ErrorAction SilentlyContinue
+          if (!$pkg) { throw 'A system pkg-config is required by the archived vcpkg ports.' }
+          $env:PKG_CONFIG = $pkg.Source
+          Write-Host "Using pkg-config: $env:PKG_CONFIG"
+          cmake --preset ninja-multi-vcpkg-ci -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/ci/triplets"
       - uses: actions/cache/save@v4
         if: always()
         with:
           path: C:/aspia-vcpkg-cache
-          key: aspia-27-v142-x86-7eb700c9-${{ github.run_id }}
+          key: aspia-27-v142-rel-x86-7eb700c9-${{ github.run_id }}
       - name: Build
         run: cmake --build --preset ninja-multi-vcpkg-ci-release --parallel 4
       - name: Tests
