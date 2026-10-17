@@ -1,0 +1,25 @@
+name: Clipboard protocol checks
+on:
+  pull_request:
+    paths:
+      - 'source/common/clipboard*'
+      - 'source/client/input_event_filter*'
+      - 'source/proto/clipboard_file.proto'
+      - 'ci/protocol-tests/**'
+      - '.github/workflows/clipboard-protocol.yml'
+permissions:
+  contents: read
+jobs:
+  protocol:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y libprotobuf-dev protobuf-compiler libgtest-dev libicu-dev libssl-dev
+      - name: Build protocol tests
+        run: cmake -S ci/protocol-tests -B build-protocol -DCMAKE_BUILD_TYPE=Debug && cmake --build build-protocol --parallel 4
+      - name: Run protocol tests
+        run: ctest --test-dir build-protocol --output-on-failure --timeout 30

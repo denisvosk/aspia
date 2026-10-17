@@ -168,7 +168,8 @@ add_custom_target(build_time_updater
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${PROJECT_SOURCE_DIR}/source/common/ui/about_dialog.cc)
 add_dependencies(aspia_common build_time_updater)
 
-add_executable(aspia_clipboard_tests clipboard_file_transfer_unittest.cc)
+add_executable(aspia_clipboard_tests clipboard_file_transfer_unittest.cc
+    ../client/input_event_filter.cc ../client/input_event_filter_unittest.cc)
 target_link_libraries(aspia_clipboard_tests PRIVATE aspia_common GTest::gtest_main)
 if (WIN32)
     target_sources(aspia_clipboard_tests PRIVATE clipboard_files_win_unittest.cc)
