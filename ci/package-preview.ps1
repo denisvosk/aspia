@@ -62,7 +62,7 @@ $hashes = foreach ($asset in $assets) { "{0}  {1}" -f (Get-FileHash -Algorithm S
 $hashes | Set-Content "$out/SHA256SUMS-$packageArch.txt" -Encoding utf8
 $assets += "$out/SHA256SUMS-$packageArch.txt"
 $tag = "v2.7.1-clipboard-preview.$env:GITHUB_RUN_NUMBER"
-$notes = "Private test build from $sha. Windows Host, Client and Console; assets are uploaded for each successfully tested architecture (x86 and x86_64). Wait for the complete workflow before testing. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests, MSI extraction and isolated Host upgrade test passed; two-computer interactive acceptance testing is still required."
+$notes = "Private test build from $sha. Windows Host, Client and Console; only architectures present in the MSI filenames have been built. Wait for the complete workflow before testing. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests, MSI extraction and isolated Host upgrade test passed for the uploaded packages; two-computer interactive acceptance testing is still required."
 $notes | Set-Content "$out/release-notes.txt" -Encoding utf8
 gh release view $tag --repo $env:GITHUB_REPOSITORY --json id 1>$null 2>$null
 if ($LASTEXITCODE -ne 0) {

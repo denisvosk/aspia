@@ -17,7 +17,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86, x64]
+        # Validate one architecture first: the account has little free quota left.
+        # Restore x64 after the x86 compiler, tests and packaging checks pass.
+        arch: [x86]
     runs-on: windows-2022
     timeout-minutes: 120
     env:
