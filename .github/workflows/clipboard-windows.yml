@@ -36,7 +36,8 @@ jobs:
         id: cache
         with:
           path: C:/aspia-vcpkg-cache
-          key: aspia-27-v142-x86-7eb700c9-v1
+          key: aspia-27-v142-x86-7eb700c9-${{ github.run_id }}
+          restore-keys: aspia-27-v142-x86-7eb700c9-
       - name: Build tools
         shell: pwsh
         run: |
@@ -53,12 +54,14 @@ jobs:
           arch: x86
           toolset: 14.29
       - name: Configure and build dependencies
-        run: cmake --preset ninja-multi-vcpkg-ci
+        run: |
+          $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
+          cmake --preset ninja-multi-vcpkg-ci
       - uses: actions/cache/save@v4
-        if: always() && steps.cache.outputs.cache-hit != 'true'
+        if: always()
         with:
           path: C:/aspia-vcpkg-cache
-          key: aspia-27-v142-x86-7eb700c9-v1
+          key: aspia-27-v142-x86-7eb700c9-${{ github.run_id }}
       - name: Build
         run: cmake --build --preset ninja-multi-vcpkg-ci-release --parallel 4
       - name: Tests
