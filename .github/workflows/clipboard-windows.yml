@@ -19,7 +19,7 @@ jobs:
       matrix:
         arch: [x86, x64]
     runs-on: windows-2022
-    timeout-minutes: 75
+    timeout-minutes: 120
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg4aspia
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/builds/ninja-multi-vcpkg-ci/vcpkg_installed
@@ -59,17 +59,28 @@ jobs:
           python -m pip install cmake==3.28.4 ninja==1.11.1.1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath
-          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*")) {
-            $p = Start-Process "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/setup.exe" -ArgumentList @('modify', '--installPath', "`"$vs`"", '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64', '--quiet', '--norestart') -Wait -PassThru
+          if (!$vs) { throw 'Visual Studio installation was not found.' }
+          # Hosted images include v142's compiler but may omit its matching ATL.
+          # Verify this before spending time building Qt and other dependencies.
+          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/atlbase.h")) {
+            $p = Start-Process "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/setup.exe" -ArgumentList @('modify', '--installPath', "`"$vs`"", '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64', '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL', '--quiet', '--norestart') -Wait -PassThru
             if ($p.ExitCode -notin 0,3010) { throw "MSVC installation failed: $($p.ExitCode)" }
+          }
+          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/atlbase.h")) {
+            throw 'ATL v142 installation did not provide atlbase.h.'
           }
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: ${{ matrix.arch }}
           toolset: 14.29
       - name: Configure and build dependencies
+        # Leave time to save completed packages even if the first Qt build times out.
+        timeout-minutes: 100
         run: |
           $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
+          "VCPKG_ROOT=$env:VCPKG_ROOT" >> $env:GITHUB_ENV
+          $atl = @($env:INCLUDE -split ';' | Where-Object { $_ -and (Test-Path (Join-Path $_ 'atlbase.h')) })
+          if (!$atl.Count) { throw 'The v142 developer environment does not expose ATL headers.' }
           Copy-Item ci/vcpkg-tools/vcpkg_acquire_msys.cmake "$env:VCPKG_ROOT/scripts/cmake/vcpkg_acquire_msys.cmake" -Force
           $pkg = Get-Command pkg-config.exe -ErrorAction SilentlyContinue
           if (!$pkg) {
@@ -79,6 +90,7 @@ jobs:
             if (!$pkgFile) { throw 'pkg-config installation failed' }
             $env:PKG_CONFIG = $pkgFile.FullName
           } else { $env:PKG_CONFIG = $pkg.Source }
+          "PKG_CONFIG=$env:PKG_CONFIG" >> $env:GITHUB_ENV
           Write-Host "Using pkg-config: $env:PKG_CONFIG"
           cmake --preset ninja-multi-vcpkg-ci -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/ci/triplets"
           if ($LASTEXITCODE) {
