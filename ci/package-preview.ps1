@@ -50,6 +50,7 @@ try {
         }
     }
 } finally { Pop-Location }
+& "$PSScriptRoot/test-host-upgrade.ps1" -NewMsi "$out/aspia-host-2.7.1-x86.msi"
 $sha = (git -C $root rev-parse HEAD).Trim()
 Run-Native 'git' @('-C', $root, 'archive', '--format=zip', "--output=$out/aspia-2.7.1-clipboard-source.zip", $sha)
 Copy-Item "$root/LICENSE.md" "$out/LICENSE.md"
@@ -59,7 +60,7 @@ $hashes = foreach ($asset in $assets) { "{0}  {1}" -f (Get-FileHash -Algorithm S
 $hashes | Set-Content "$out/SHA256SUMS.txt" -Encoding utf8
 $assets += "$out/SHA256SUMS.txt"
 $tag = "v2.7.1-clipboard-preview.$env:GITHUB_RUN_NUMBER"
-$notes = "Private test build from $sha. Windows x86 Host, Client and Console. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests and MSI extraction passed; two-computer interactive acceptance testing is still required."
+$notes = "Private test build from $sha. Windows x86 Host, Client and Console. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests, MSI extraction and isolated Host upgrade test passed; two-computer interactive acceptance testing is still required."
 $notes | Set-Content "$out/release-notes.txt" -Encoding utf8
 Run-Native 'gh' (@('release', 'create', $tag, '--repo', $env:GITHUB_REPOSITORY, '--target', $sha, '--draft', '--prerelease', '--title', 'Aspia 2.7.1 — clipboard files preview', '--notes-file', "$out/release-notes.txt") + $assets)
 "Draft release: https://github.com/$env:GITHUB_REPOSITORY/releases" >> $env:GITHUB_STEP_SUMMARY

@@ -25,6 +25,7 @@ add_executable(clipboard_protocol_tests
     ${ROOT}/source/base/crypto/random.cc
     ${ROOT}/source/base/logging.cc
     ${ROOT}/source/base/debug.cc
+    ${ROOT}/source/base/endian_util.cc
     ${ROOT}/source/base/environment.cc
     ${ROOT}/source/base/system_time.cc
     ${ROOT}/source/base/system_error.cc

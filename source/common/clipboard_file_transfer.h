@@ -40,7 +40,7 @@ public:
     void receive(const proto::ClipboardFile& message);
     void publish(proto::ClipboardFile offer, std::vector<std::filesystem::path> paths);
     void clearLocal();
-    void clearRemote();
+    void clearRemote(bool notify_peer = true);
     bool enabled() const { return !peers_.empty(); }
     std::shared_ptr<ReadState> open(const proto::ClipboardFile& offer, uint32_t index);
     void request(const std::shared_ptr<ReadState>& state);

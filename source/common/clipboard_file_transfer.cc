@@ -70,15 +70,21 @@ bool validClipboardOffer(const proto::ClipboardFile& message)
 
 ClipboardFileTransfer::ClipboardFileTransfer(Send send, Offer offer)
     : send_(std::move(send)), offer_(std::move(offer)) {}
-ClipboardFileTransfer::~ClipboardFileTransfer() { clearRemote(); }
+ClipboardFileTransfer::~ClipboardFileTransfer() { clearRemote(false); }
 void ClipboardFileTransfer::send(proto::ClipboardFile message) { send_(fileClipboardEvent(message)); }
 
-void ClipboardFileTransfer::clearRemote()
+void ClipboardFileTransfer::clearRemote(bool notify_peer)
 {
+    std::vector<std::shared_ptr<ReadState>> states;
     for (auto& reader : readers_)
-        if (auto state = reader.second.lock()) { state->failed = true; state->waiting = false; }
+        if (auto state = reader.second.lock()) states.push_back(state);
     readers_.clear();
     remote_.Clear();
+    for (auto& state : states)
+    {
+        if (notify_peer) close(state);
+        else { state->failed = true; state->waiting = false; }
+    }
 }
 void ClipboardFileTransfer::clearLocal()
 {
