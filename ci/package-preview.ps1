@@ -1,5 +1,7 @@
 # Private experimental packages, never an automatic-update publication.
+param([ValidateSet('x86','x64')][string]$Arch = 'x86')
 $ErrorActionPreference = 'Stop'
+$packageArch = if ($Arch -eq 'x64') { 'x86_64' } else { 'x86' }
 $root = Split-Path $PSScriptRoot -Parent
 $bin = Join-Path $root 'builds/ninja-multi-vcpkg-ci/Release'
 $out = Join-Path $root 'preview'
@@ -17,9 +19,9 @@ function Run-Native([string]$exe, [string[]]$arguments) {
 Push-Location (Join-Path $root 'installer')
 try {
     foreach ($product in @('host', 'client', 'console')) {
-        $base = Join-Path $out "aspia-$product-2.7.1-x86.msi"
+        $base = Join-Path $out "aspia-$product-2.7.1-$packageArch.msi"
         $object = Join-Path $out "$product.wixobj"
-        Run-Native "$wixBin/candle.exe" @('-nologo', '-out', $object, '-arch', 'x86', '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', "$product.wxs")
+        Run-Native "$wixBin/candle.exe" @('-nologo', '-out', $object, '-arch', $Arch, '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', "$product.wxs")
         Run-Native "$wixBin/light.exe" @('-nologo', '-sval', '-out', $base, '-cultures:en-us', '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', '-loc', "translations/$product.en-us.wxl", $object)
         $languages = @('1033')
         foreach ($translation in Get-ChildItem "translations/$product.*.wxl") {
@@ -50,17 +52,25 @@ try {
         }
     }
 } finally { Pop-Location }
-& "$PSScriptRoot/test-host-upgrade.ps1" -NewMsi "$out/aspia-host-2.7.1-x86.msi"
+& "$PSScriptRoot/test-host-upgrade.ps1" -NewMsi "$out/aspia-host-2.7.1-$packageArch.msi" -Arch $Arch
 $sha = (git -C $root rev-parse HEAD).Trim()
 Run-Native 'git' @('-C', $root, 'archive', '--format=zip', "--output=$out/aspia-2.7.1-clipboard-source.zip", $sha)
 Copy-Item "$root/LICENSE.md" "$out/LICENSE.md"
 Copy-Item "$root/docs/clipboard-preview.md" "$out/README-preview.md"
-$assets = @((Get-ChildItem "$out/aspia-*-2.7.1-x86.msi").FullName) + @("$out/aspia-2.7.1-clipboard-source.zip", "$out/LICENSE.md", "$out/README-preview.md")
+$assets = @((Get-ChildItem "$out/aspia-*-2.7.1-$packageArch.msi").FullName) + @("$out/aspia-2.7.1-clipboard-source.zip", "$out/LICENSE.md", "$out/README-preview.md")
 $hashes = foreach ($asset in $assets) { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $asset).Hash.ToLower(), (Split-Path $asset -Leaf) }
-$hashes | Set-Content "$out/SHA256SUMS.txt" -Encoding utf8
-$assets += "$out/SHA256SUMS.txt"
+$hashes | Set-Content "$out/SHA256SUMS-$packageArch.txt" -Encoding utf8
+$assets += "$out/SHA256SUMS-$packageArch.txt"
 $tag = "v2.7.1-clipboard-preview.$env:GITHUB_RUN_NUMBER"
-$notes = "Private test build from $sha. Windows x86 Host, Client and Console. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests, MSI extraction and isolated Host upgrade test passed; two-computer interactive acceptance testing is still required."
+$notes = "Private test build from $sha. Windows Host, Client and Console; assets are uploaded for each successfully tested architecture (x86 and x86_64). Wait for the complete workflow before testing. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests, MSI extraction and isolated Host upgrade test passed; two-computer interactive acceptance testing is still required."
 $notes | Set-Content "$out/release-notes.txt" -Encoding utf8
-Run-Native 'gh' (@('release', 'create', $tag, '--repo', $env:GITHUB_REPOSITORY, '--target', $sha, '--draft', '--prerelease', '--title', 'Aspia 2.7.1 — clipboard files preview', '--notes-file', "$out/release-notes.txt") + $assets)
+gh release view $tag --repo $env:GITHUB_REPOSITORY --json id 1>$null 2>$null
+if ($LASTEXITCODE -ne 0) {
+    gh release create $tag --repo $env:GITHUB_REPOSITORY --target $sha --draft --prerelease --title 'Aspia 2.7.1 — clipboard files preview' --notes-file "$out/release-notes.txt"
+    if ($LASTEXITCODE -ne 0) {
+        # Another architecture may have created the draft concurrently.
+        Run-Native 'gh' @('release', 'view', $tag, '--repo', $env:GITHUB_REPOSITORY, '--json', 'id')
+    }
+}
+Run-Native 'gh' (@('release', 'upload', $tag, '--repo', $env:GITHUB_REPOSITORY, '--clobber') + $assets)
 "Draft release: https://github.com/$env:GITHUB_REPOSITORY/releases" >> $env:GITHUB_STEP_SUMMARY

@@ -12,14 +12,19 @@ concurrency:
   group: clipboard-windows-${{ github.head_ref || github.ref }}
   cancel-in-progress: false
 jobs:
-  windows-x86:
+  windows:
+    name: windows-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, x64]
     runs-on: windows-2022
-    timeout-minutes: 150
+    timeout-minutes: 75
     env:
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg4aspia
       VCPKG_INSTALLED_DIR: ${{ github.workspace }}/builds/ninja-multi-vcpkg-ci/vcpkg_installed
-      VCPKG_TRIPLET: x86-windows-static
-      VCPKG_DEFAULT_HOST_TRIPLET: x86-windows-static
+      VCPKG_TRIPLET: ${{ matrix.arch }}-windows-static
+      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.arch }}-windows-static
       VCPKG_DEFAULT_BINARY_CACHE: C:/aspia-vcpkg-cache
       VCPKG_BINARY_SOURCES: default,readwrite
       VCPKG_MAX_CONCURRENCY: 4
@@ -45,8 +50,8 @@ jobs:
         id: cache
         with:
           path: C:/aspia-vcpkg-cache
-          key: aspia-27-v142-rel-x86-7eb700c9-${{ github.run_id }}
-          restore-keys: aspia-27-v142-rel-x86-7eb700c9-
+          key: aspia-27-v142-rel-${{ matrix.arch }}-7eb700c9-${{ github.run_id }}
+          restore-keys: aspia-27-v142-rel-${{ matrix.arch }}-7eb700c9-
       - name: Build tools
         shell: pwsh
         run: |
@@ -60,7 +65,7 @@ jobs:
           }
       - uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x86
+          arch: ${{ matrix.arch }}
           toolset: 14.29
       - name: Configure and build dependencies
         run: |
@@ -88,13 +93,13 @@ jobs:
         if: always()
         with:
           path: C:/aspia-vcpkg-cache
-          key: aspia-27-v142-rel-x86-7eb700c9-${{ github.run_id }}
+          key: aspia-27-v142-rel-${{ matrix.arch }}-7eb700c9-${{ github.run_id }}
       - name: Build
         run: cmake --build --preset ninja-multi-vcpkg-ci-release --parallel 4
       - name: Tests
         run: ctest --preset ninja-multi-vcpkg-ci-release --output-on-failure
       - name: Package preview
         if: hashFiles('ci/package-preview.ps1') != ''
-        run: ./ci/package-preview.ps1
+        run: ./ci/package-preview.ps1 -Arch "${{ matrix.arch }}"
         env:
           GH_TOKEN: ${{ github.token }}

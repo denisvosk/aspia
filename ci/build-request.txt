@@ -1,1 +1,1 @@
-Rebuild: restore MSYS2 build tools; validate clipboard cancellation and compatibility.
+Build x86 and x64 previews; validate protocol, Windows OLE and same-architecture Host upgrades.
