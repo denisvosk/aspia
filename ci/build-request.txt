@@ -1,0 +1,1 @@
+Baseline: verify the original 2.7 Windows toolchain before adding clipboard files.

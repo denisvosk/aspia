@@ -1,0 +1,70 @@
+name: Windows 2.7 clipboard preview
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/clipboard-windows.yml'
+      - 'ci/build-request.txt'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: clipboard-windows-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  windows-x86:
+    runs-on: windows-2022
+    timeout-minutes: 150
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg4aspia
+      VCPKG_INSTALLED_DIR: ${{ github.workspace }}/builds/ninja-multi-vcpkg-ci/vcpkg_installed
+      VCPKG_TRIPLET: x86-windows-static
+      VCPKG_DEFAULT_HOST_TRIPLET: x86-windows-static
+      VCPKG_DEFAULT_BINARY_CACHE: C:/aspia-vcpkg-cache
+      VCPKG_BINARY_SOURCES: default,readwrite
+      VCPKG_MAX_CONCURRENCY: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: dchapyshev/vcpkg4aspia
+          ref: 7eb700c9688daed6d8bdcdc571ebe3eedea6a774
+          path: vcpkg4aspia
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: C:/aspia-vcpkg-cache
+          key: aspia-27-v142-x86-7eb700c9-v1
+      - name: Build tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          python -m pip install cmake==3.28.4 ninja==1.11.1.1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath
+          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*")) {
+            $p = Start-Process "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/setup.exe" -ArgumentList @('modify', '--installPath', "`"$vs`"", '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64', '--quiet', '--norestart') -Wait -PassThru
+            if ($p.ExitCode -notin 0,3010) { throw "MSVC installation failed: $($p.ExitCode)" }
+          }
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x86
+          toolset: 14.29
+      - name: Configure and build dependencies
+        run: cmake --preset ninja-multi-vcpkg-ci
+      - uses: actions/cache/save@v4
+        if: always() && steps.cache.outputs.cache-hit != 'true'
+        with:
+          path: C:/aspia-vcpkg-cache
+          key: aspia-27-v142-x86-7eb700c9-v1
+      - name: Build
+        run: cmake --build --preset ninja-multi-vcpkg-ci-release --parallel 4
+      - name: Tests
+        run: ctest --preset ninja-multi-vcpkg-ci-release --output-on-failure
+      - name: Package preview
+        if: hashFiles('ci/package-preview.ps1') != ''
+        run: ./ci/package-preview.ps1
+        env:
+          GH_TOKEN: ${{ github.token }}
