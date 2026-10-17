@@ -32,7 +32,13 @@ public:
         *out = static_cast<IStream*>(this); AddRef(); return S_OK;
     }
     ULONG STDMETHODCALLTYPE AddRef() override { return ++refs_; }
-    ULONG STDMETHODCALLTYPE Release() override { ULONG count = --refs_; if (!count) delete this; return count; }
+    ULONG STDMETHODCALLTYPE Release() override
+    {
+        ULONG count = --refs_;
+        if (!count) delete this;
+        else if (count == 1 && reading_ && control_->transfer) control_->transfer->close(state_);
+        return count;
+    }
     HRESULT STDMETHODCALLTYPE Read(void* buffer, ULONG count, ULONG* read) override
     {
         if (read) *read = 0;
@@ -40,7 +46,8 @@ public:
         if (GetCurrentThreadId() != control_->thread) return RPC_E_WRONG_THREAD;
         if (reading_) return RPC_E_CALL_REJECTED;
         reading_ = true;
-        struct Guard { bool& value; ~Guard() { value = false; } } guard{reading_};
+        AddRef(); // A nested COM cancellation may release the caller's reference.
+        struct Guard { RemoteFileStream* self; ~Guard() { self->reading_ = false; self->Release(); } } guard{this};
         ULONG done = 0;
         while (done < count)
         {
@@ -194,6 +201,7 @@ public:
         if (format->cfFormat == contents_)
         {
             if (!(format->tymed & TYMED_ISTREAM)) return DV_E_TYMED;
+            if (format->lindex == -1) return S_OK; // Format availability query from Explorer.
             if (format->lindex < 0 || format->lindex >= offer_.entry_size() ||
                 offer_.entry(format->lindex).directory()) return DV_E_LINDEX;
             return S_OK;
@@ -210,6 +218,8 @@ public:
         if (FAILED(hr)) return hr;
         if (format->cfFormat == contents_)
         {
+            if (format->lindex < 0 || format->lindex >= offer_.entry_size() ||
+                offer_.entry(format->lindex).directory()) return DV_E_LINDEX;
             if (!control_->transfer) return STG_E_REVERTED;
             auto state = control_->transfer->open(offer_, static_cast<uint32_t>(format->lindex));
             if (!state) return STG_E_REVERTED;
@@ -232,7 +242,8 @@ public:
             {
                 const auto& entry = offer_.entry(i);
                 auto& descriptor = group->fgd[i];
-                descriptor.dwFlags = FD_ATTRIBUTES | FD_FILESIZE | FD_PROGRESSUI;
+                descriptor.dwFlags = FD_ATTRIBUTES | FD_UNICODE;
+                if (!entry.directory()) descriptor.dwFlags |= FD_FILESIZE | FD_PROGRESSUI;
                 descriptor.dwFileAttributes = entry.directory() ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
                 descriptor.nFileSizeHigh = static_cast<DWORD>(entry.size() >> 32);
                 descriptor.nFileSizeLow = static_cast<DWORD>(entry.size());
@@ -274,7 +285,8 @@ private:
 bool appendPath(const std::filesystem::path& path, const std::filesystem::path& relative,
                 proto::ClipboardFile* offer, std::vector<std::filesystem::path>* paths)
 {
-    if (offer->entry_size() >= kClipboardMaxEntries) return false;
+    const std::string name = base::utf8FromWide(relative.native());
+    if (offer->entry_size() >= kClipboardMaxEntries || name.empty() || name.size() >= 260) return false;
     const DWORD attributes = GetFileAttributesW(path.c_str());
     // Do not traverse junctions/symlinks or copy device/alternate stream paths.
     if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) return false;
@@ -282,7 +294,7 @@ bool appendPath(const std::filesystem::path& path, const std::filesystem::path& 
     auto canonical = std::filesystem::canonical(path, ec);
     if (ec) return false;
     auto* entry = offer->add_entry();
-    entry->set_name(base::utf8FromWide(relative.native()));
+    entry->set_name(name);
     const bool directory = (attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
     entry->set_directory(directory);
     if (!directory)
@@ -347,7 +359,9 @@ void ClipboardFilesWin::setOffer(const proto::ClipboardFile& offer)
     for (const auto& entry : offer.entry())
     {
         std::wstring name;
-        if (!base::utf8ToWide(entry.name(), &name) || name.empty() || name.size() >= MAX_PATH) return;
+        if (!MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, entry.name().data(),
+                                 static_cast<int>(entry.name().size()), nullptr, 0) ||
+            !base::utf8ToWide(entry.name(), &name) || name.empty() || name.size() >= MAX_PATH) return;
         for (const auto& previous : names)
             if (CompareStringOrdinal(name.c_str(), -1, previous.c_str(), -1, TRUE) == CSTR_EQUAL) return;
         names.push_back(std::move(name));

@@ -19,7 +19,7 @@ TEST(ClipboardFiles, ValidatesNamesAndHierarchy)
     EXPECT_TRUE(validClipboardOffer(offerOf("report.txt")));
     EXPECT_TRUE(validClipboardOffer(offerOf("\xD0\xA4\xD0\xB0\xD0\xB9\xD0\xBB.txt")));
     for (const char* name : {"", "..", ".", "..\\secret", "\\server\\file", "C:\\file",
-                            "x:stream", "a/b", "NUL.txt", "COM1", "x.", "x ", "a\\", "a\\b"})
+                            "x:stream", "a/b", "NUL.txt", "COM1", "CON .txt", "CONOUT$", "LPT\xc2\xb9", "x.", "x ", "a\\", "a\\b"})
         EXPECT_FALSE(validClipboardOffer(offerOf(name))) << name;
     auto offer = offerOf("folder"); offer.mutable_entry(0)->set_directory(true);
     offer.add_entry()->set_name("folder\\file.txt");

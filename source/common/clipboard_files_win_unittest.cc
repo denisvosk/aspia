@@ -58,7 +58,10 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     EXPECT_STREQ(L"Folder\\\u0424\u0430\u0439\u043B.dat", group->fgd[1].cFileName);
     GlobalUnlock(medium.hGlobal); ReleaseStgMedium(&medium);
     format.cfFormat = static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_FILECONTENTS));
-    format.tymed = TYMED_ISTREAM; format.lindex = 1;
+    format.tymed = TYMED_ISTREAM; format.lindex = -1;
+    EXPECT_EQ(S_OK, object->QueryGetData(&format));
+    EXPECT_EQ(DV_E_LINDEX, object->GetData(&format, &medium));
+    format.lindex = 1;
     ASSERT_EQ(S_OK, object->GetData(&format, &medium));
     STATSTG stat{}; ASSERT_EQ(S_OK, medium.pstm->Stat(&stat, STATFLAG_NONAME));
     EXPECT_EQ(input.size(), stat.cbSize.QuadPart);

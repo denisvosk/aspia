@@ -1,1 +1,1 @@
-Build the first clipboard-file implementation and run protocol/OLE tests.
+Rebuild: restore MSYS2 build tools; validate clipboard cancellation and compatibility.

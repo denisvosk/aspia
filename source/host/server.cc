@@ -274,6 +274,11 @@ void Server::onUserListChanged()
 //--------------------------------------------------------------------------------------------------
 void Server::onUpdateCheckedFinished(const base::ByteArray& result)
 {
+    if (!settings_.isAutoUpdateEnabled())
+    {
+        task_runner_->deleteSoon(std::move(update_checker_));
+        return;
+    }
     if (result.empty())
     {
         LOG(LS_ERROR) << "Error while retrieving update information";
@@ -317,6 +322,11 @@ void Server::onFileDownloaderError(int error_code)
 //--------------------------------------------------------------------------------------------------
 void Server::onFileDownloaderCompleted()
 {
+    if (!settings_.isAutoUpdateEnabled())
+    {
+        task_runner_->deleteSoon(std::move(update_downloader_));
+        return;
+    }
 #if defined(OS_WIN)
     std::error_code error_code;
     std::filesystem::path file_path = std::filesystem::temp_directory_path(error_code);
@@ -584,6 +594,7 @@ void Server::disconnectFromRouter()
 void Server::checkForUpdates()
 {
 #if defined(OS_WIN)
+    if (!settings_.isAutoUpdateEnabled()) return;
     int64_t last_timepoint = settings_.lastUpdateCheck();
     int64_t current_timepoint = std::time(nullptr);
 

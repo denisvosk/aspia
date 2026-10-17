@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  actions: write
 concurrency:
   group: clipboard-windows-${{ github.head_ref || github.ref }}
   cancel-in-progress: false
@@ -27,6 +28,14 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+      - name: Cancel obsolete upstream builds for this branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $runs = gh run list --workflow sw.yml --branch feature/clipboard-files-2.7 --json databaseId,status --limit 20 | ConvertFrom-Json
+          foreach ($run in $runs) {
+            if ($run.status -in 'queued','in_progress','waiting','pending') { gh run cancel $run.databaseId }
+          }
       - uses: actions/checkout@v4
         with:
           repository: dchapyshev/vcpkg4aspia
@@ -56,6 +65,7 @@ jobs:
       - name: Configure and build dependencies
         run: |
           $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
+          Copy-Item ci/vcpkg-tools/vcpkg_acquire_msys.cmake "$env:VCPKG_ROOT/scripts/cmake/vcpkg_acquire_msys.cmake" -Force
           $pkg = Get-Command pkg-config.exe -ErrorAction SilentlyContinue
           if (!$pkg) {
             choco install pkgconfiglite --version=0.28.0 --yes --no-progress --limit-output
@@ -66,6 +76,14 @@ jobs:
           } else { $env:PKG_CONFIG = $pkg.Source }
           Write-Host "Using pkg-config: $env:PKG_CONFIG"
           cmake --preset ninja-multi-vcpkg-ci -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/ci/triplets"
+          if ($LASTEXITCODE) {
+            $failure = $LASTEXITCODE
+            Get-ChildItem "$env:VCPKG_ROOT/buildtrees" -Filter *.log -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 4 | ForEach-Object {
+              Write-Host $_.FullName
+              Get-Content $_.FullName -Tail 80
+            }
+            exit $failure
+          }
       - uses: actions/cache/save@v4
         if: always()
         with:

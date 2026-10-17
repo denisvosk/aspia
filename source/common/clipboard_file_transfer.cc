@@ -49,7 +49,11 @@ bool validClipboardOffer(const proto::ClipboardFile& message)
             std::string part = folded.substr(start, end - start);
             if (part.empty() || part.back() == '.' || part.back() == ' ') return false;
             std::string stem = part.substr(0, part.find('.'));
+            while (!stem.empty() && stem.back() == ' ') stem.pop_back();
             if (stem == "con" || stem == "prn" || stem == "aux" || stem == "nul" ||
+                stem == "conin$" || stem == "conout$" ||
+                (stem.size() == 5 && (stem.substr(0, 3) == "com" || stem.substr(0, 3) == "lpt") &&
+                 (stem.substr(3) == "\xc2\xb9" || stem.substr(3) == "\xc2\xb2" || stem.substr(3) == "\xc2\xb3")) ||
                 (stem.size() == 4 && (stem.substr(0, 3) == "com" || stem.substr(0, 3) == "lpt") &&
                  stem[3] >= '0' && stem[3] <= '9')) return false;
             if (end != folded.size())
