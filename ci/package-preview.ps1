@@ -12,6 +12,13 @@ $wixBin = Split-Path (Get-Command candle.exe).Source
 $sdkScript = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x86/wisubstg.vbs" | Sort-Object FullName -Descending | Select-Object -First 1
 if (!$sdkScript) { throw 'Windows SDK MSI scripts (wisubstg.vbs) not installed.' }
 $sdk = $sdkScript.DirectoryName
+# Match installer/build.cmd from 2.7: sv-fi.wxl exists in the source tree,
+# but is not shipped and has no corresponding built-in WiX UI localization.
+$installerCultures = @(
+    'en-us', 'cs-cz', 'da-dk', 'de-de', 'el-gr', 'es-es', 'fr-fr', 'he-il',
+    'hu-hu', 'it-it', 'ja-jp', 'ko-kr', 'nl-nl', 'nb-no', 'pl-pl', 'pt-br',
+    'pt-pt', 'ru-ru', 'sv-se', 'tr-tr', 'uk-ua', 'zh-cn', 'zh-tw'
+)
 function Run-Native([string]$exe, [string[]]$arguments) {
     & $exe @arguments
     if ($LASTEXITCODE -ne 0) { throw "$exe failed with exit code $LASTEXITCODE" }
@@ -22,15 +29,18 @@ try {
         $base = Join-Path $out "aspia-$product-2.7.1-$packageArch.msi"
         $object = Join-Path $out "$product.wixobj"
         Run-Native "$wixBin/candle.exe" @('-nologo', '-out', $object, '-arch', $Arch, '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', "$product.wxs")
+        Write-Host "Linking $product MSI ($Arch, en-us)"
         Run-Native "$wixBin/light.exe" @('-nologo', '-sval', '-out', $base, '-cultures:en-us', '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', '-loc', "translations/$product.en-us.wxl", $object)
         $languages = @('1033')
-        foreach ($translation in Get-ChildItem "translations/$product.*.wxl") {
-            $culture = $translation.BaseName.Substring($product.Length + 1)
+        foreach ($culture in $installerCultures) {
             if ($culture -eq 'en-us') { continue }
+            $translation = Join-Path (Get-Location).Path "translations/$product.$culture.wxl"
+            if (!(Test-Path $translation)) { throw "Missing installer translation: $translation" }
             $lcid = [System.Globalization.CultureInfo]::GetCultureInfo($culture).LCID
             $localized = Join-Path $out "$product-$culture.msi"
             $transform = Join-Path $out "$product-$culture.mst"
-            Run-Native "$wixBin/light.exe" @('-nologo', '-sval', '-out', $localized, "-cultures:$culture", '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', '-loc', $translation.FullName, $object)
+            Write-Host "Linking $product MSI ($Arch, $culture)"
+            Run-Native "$wixBin/light.exe" @('-nologo', '-sval', '-out', $localized, "-cultures:$culture", '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', '-loc', $translation, $object)
             Run-Native "$wixBin/torch.exe" @('-nologo', '-p', '-t', 'language', $base, $localized, '-out', $transform)
             Run-Native 'cscript.exe' @('//nologo', "$sdk/wisubstg.vbs", $base, $transform, "$lcid")
             $languages += "$lcid"

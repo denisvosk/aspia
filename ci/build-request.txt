@@ -1,2 +1,2 @@
-Build x86 and x64 after correcting OLE wrapper rejection assertions.
-Require failed invalid-index requests without protocol reads; keep all data and upgrade checks.
+Build x86 and x64 with the exact 23 original installer cultures from installer/build.cmd.
+Run all tests, package Host/Client/Console and validate same-architecture Host upgrades.
