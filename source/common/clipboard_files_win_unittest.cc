@@ -25,13 +25,16 @@ protected:
 TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
 {
     ClipboardFilesWin* receiver = nullptr;
+    size_t read_requests = 0;
     ClipboardFileTransfer sender([&](const proto::ClipboardEvent& event) {
         proto::ClipboardFile message;
         ASSERT_TRUE(parseFileClipboard(event, &message)); receiver->receive(message);
     }, [](const auto&) {});
     ClipboardFilesWin windows([&](const proto::ClipboardEvent& event) {
         proto::ClipboardFile message;
-        ASSERT_TRUE(parseFileClipboard(event, &message)); sender.receive(message);
+        ASSERT_TRUE(parseFileClipboard(event, &message));
+        if (message.type() == proto::ClipboardFile::READ) ++read_requests;
+        sender.receive(message);
     });
     receiver = &windows;
     proto::ClipboardFile hello; hello.set_type(proto::ClipboardFile::HELLO);
@@ -50,6 +53,17 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     ASSERT_EQ(S_OK, OleGetClipboard(&object)); ASSERT_NE(nullptr, object);
     FORMATETC format{static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW)), nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
     STGMEDIUM medium{};
+    auto expect_rejected = [&] {
+        const size_t before = read_requests;
+        STGMEDIUM rejected{};
+        const HRESULT result = object->GetData(&format, &rejected);
+        // OleGetClipboard returns a system wrapper, not our RemoteFileObject.
+        // Its format-conversion fallback can replace DV_E_LINDEX with
+        // DV_E_FORMATETC or CLIPBRD_E_BAD_DATA. Test the observable contract.
+        EXPECT_TRUE(FAILED(result)) << "Invalid file index returned data: " << result;
+        EXPECT_EQ(before, read_requests);
+        if (SUCCEEDED(result)) ReleaseStgMedium(&rejected);
+    };
     ASSERT_EQ(S_OK, object->GetData(&format, &medium));
     auto* group = static_cast<FILEGROUPDESCRIPTORW*>(GlobalLock(medium.hGlobal));
     ASSERT_NE(nullptr, group); EXPECT_EQ(3u, group->cItems);
@@ -60,7 +74,7 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     format.cfFormat = static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_FILECONTENTS));
     format.tymed = TYMED_ISTREAM; format.lindex = -1;
     EXPECT_EQ(S_OK, object->QueryGetData(&format));
-    EXPECT_EQ(DV_E_LINDEX, object->GetData(&format, &medium));
+    expect_rejected();
     format.lindex = 1;
     ASSERT_EQ(S_OK, object->GetData(&format, &medium));
     STATSTG stat{}; ASSERT_EQ(S_OK, medium.pstm->Stat(&stat, STATFLAG_NONAME));
@@ -77,7 +91,7 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     ASSERT_EQ(S_OK, object->GetData(&format, &medium));
     EXPECT_EQ(S_FALSE, medium.pstm->Read(prefix, sizeof(prefix), &got)); EXPECT_EQ(0u, got);
     ReleaseStgMedium(&medium);
-    format.lindex = 0; EXPECT_EQ(DV_E_LINDEX, object->GetData(&format, &medium));
+    format.lindex = 0; expect_rejected(); // Directories have descriptors, not streams.
     object->Release();
 }
 TEST_F(OleClipboardTest, DisconnectInvalidatesExistingOleStream)
