@@ -4,6 +4,7 @@
 #include "common/clipboard_files_win.h"
 #include "base/strings/unicode.h"
 #include "base/win/scoped_clipboard.h"
+#include <shellapi.h>
 #include <ShlObj.h>
 #include <algorithm>
 #include <atomic>
