@@ -1,2 +1,2 @@
-Build x86 and x64 with the exact 23 original installer cultures from installer/build.cmd.
-Run all tests, package Host/Client/Console and validate same-architecture Host upgrades.
+Build x86 and x64 with normalized native MSI paths for isolated Host upgrade tests.
+Keep protocol/OLE tests, 23 installer cultures, extraction and configuration-preservation checks.

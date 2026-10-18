@@ -4,6 +4,10 @@ param([Parameter(Mandatory=$true)][string]$NewMsi,
 $packageArch = if ($Arch -eq 'x64') { 'x86_64' } else { 'x86' }
 $expectedHash = if ($Arch -eq 'x64') { '8ba2a5dbb716edfb7bbd72483163111f9efd6e978ae0f81a0769842970331d5d' } else { '969b312fc7d6d178155faed901cb14c08cc5f55fb2746d6315fd2289829b247f' }
 $ErrorActionPreference = 'Stop'
+# PowerShell accepts mixed separators, but Windows Installer can reject them
+# with error 1324/1619. Resolve the preview before installing the old Host.
+if (!(Test-Path -LiteralPath $NewMsi -PathType Leaf)) { throw "Preview MSI does not exist: $NewMsi" }
+$NewMsi = (Get-Item -LiteralPath $NewMsi).FullName.Replace('/', '\')
 $work = Join-Path $env:RUNNER_TEMP 'aspia-upgrade-test'
 New-Item -ItemType Directory -Force $work | Out-Null
 $old = Join-Path $work "aspia-host-2.7.0-$packageArch.msi"
@@ -12,7 +16,9 @@ if ((Get-FileHash $old -Algorithm SHA256).Hash.ToLower() -ne $expectedHash) {
     throw 'Original 2.7.0 MSI checksum mismatch'
 }
 function Install-TestMsi([string]$path, [string]$name) {
+    $path = (Get-Item -LiteralPath $path).FullName.Replace('/', '\')
     $log = Join-Path $work "$name.log"
+    Write-Host "Installing $name from $path"
     $p = Start-Process msiexec.exe -ArgumentList @('/i', "`"$path`"", '/qn', '/norestart', '/l*v', "`"$log`"") -Wait -PassThru
     if ($p.ExitCode -ne 0) {
         Get-Content $log -Tail 80

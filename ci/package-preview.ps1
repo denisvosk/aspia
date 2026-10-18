@@ -62,7 +62,8 @@ try {
         }
     }
 } finally { Pop-Location }
-& "$PSScriptRoot/test-host-upgrade.ps1" -NewMsi "$out/aspia-host-2.7.1-$packageArch.msi" -Arch $Arch
+$hostMsi = Join-Path $out "aspia-host-2.7.1-$packageArch.msi"
+& (Join-Path $PSScriptRoot 'test-host-upgrade.ps1') -NewMsi $hostMsi -Arch $Arch
 $sha = (git -C $root rev-parse HEAD).Trim()
 Run-Native 'git' @('-C', $root, 'archive', '--format=zip', "--output=$out/aspia-2.7.1-clipboard-source.zip", $sha)
 Copy-Item "$root/LICENSE.md" "$out/LICENSE.md"
