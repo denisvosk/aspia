@@ -60,14 +60,16 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
           $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath
           if (!$vs) { throw 'Visual Studio installation was not found.' }
-          # Hosted images include v142's compiler but may omit its matching ATL.
+          # Hosted images may omit v142's matching ATL and MFC components.
           # Verify this before spending time building Qt and other dependencies.
-          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/atlbase.h")) {
-            $p = Start-Process "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/setup.exe" -ArgumentList @('modify', '--installPath', "`"$vs`"", '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64', '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL', '--quiet', '--norestart') -Wait -PassThru
+          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/atlbase.h") -or !(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/afxres.h")) {
+            $p = Start-Process "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/setup.exe" -ArgumentList @('modify', '--installPath', "`"$vs`"", '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64', '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL', '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.MFC', '--quiet', '--norestart') -Wait -PassThru
             if ($p.ExitCode -notin 0,3010) { throw "MSVC installation failed: $($p.ExitCode)" }
           }
-          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/atlbase.h")) {
-            throw 'ATL v142 installation did not provide atlbase.h.'
+          foreach ($header in 'atlbase.h','afxres.h') {
+            if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/$header")) {
+              throw "ATL/MFC v142 installation did not provide $header."
+            }
           }
       - uses: ilammy/msvc-dev-cmd@v1
         with:
@@ -79,8 +81,10 @@ jobs:
         run: |
           $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
           "VCPKG_ROOT=$env:VCPKG_ROOT" >> $env:GITHUB_ENV
-          $atl = @($env:INCLUDE -split ';' | Where-Object { $_ -and (Test-Path (Join-Path $_ 'atlbase.h')) })
-          if (!$atl.Count) { throw 'The v142 developer environment does not expose ATL headers.' }
+          foreach ($header in 'atlbase.h','afxres.h') {
+            $includeDirs = @($env:INCLUDE -split ';' | Where-Object { $_ -and (Test-Path (Join-Path $_ $header)) })
+            if (!$includeDirs.Count) { throw "The v142 developer environment does not expose $header." }
+          }
           Copy-Item ci/vcpkg-tools/vcpkg_acquire_msys.cmake "$env:VCPKG_ROOT/scripts/cmake/vcpkg_acquire_msys.cmake" -Force
           $pkg = Get-Command pkg-config.exe -ErrorAction SilentlyContinue
           if (!$pkg) {
