@@ -94,6 +94,64 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     format.lindex = 0; expect_rejected(); // Directories have descriptors, not streams.
     object->Release();
 }
+// Explorer consumes IDataObject through COM from another process. A same-process
+// GetData test cannot detect marshaling/access failures in that path.
+TEST_F(OleClipboardTest, SeparateProcessReadsVirtualFile)
+{
+    ClipboardFilesWin* receiver = nullptr;
+    ClipboardFileTransfer sender([&](const proto::ClipboardEvent& event) {
+        proto::ClipboardFile message;
+        ASSERT_TRUE(parseFileClipboard(event, &message)); receiver->receive(message);
+    }, [](const auto&) {});
+    ClipboardFilesWin windows([&](const proto::ClipboardEvent& event) {
+        proto::ClipboardFile message;
+        ASSERT_TRUE(parseFileClipboard(event, &message)); sender.receive(message);
+    });
+    receiver = &windows;
+    proto::ClipboardFile hello; hello.set_type(proto::ClipboardFile::HELLO);
+    sender.receive(hello); windows.receive(hello);
+    const std::string contents = "Aspia cross-process clipboard";
+    const auto path = directory / "cross-process.txt";
+    { std::ofstream file(path, std::ios::binary); file << contents; }
+    proto::ClipboardFile offer;
+    auto* entry = offer.add_entry(); entry->set_name("cross-process.txt"); entry->set_size(contents.size());
+    sender.publish(offer, {std::filesystem::canonical(path)});
+
+    const auto probe = std::filesystem::path(ASPIA_CLIPBOARD_PROBE_PATH);
+    ASSERT_TRUE(std::filesystem::is_regular_file(probe));
+    wchar_t system_directory[MAX_PATH]{};
+    ASSERT_NE(0u, GetSystemDirectoryW(system_directory, MAX_PATH));
+    const auto executable = std::filesystem::path(system_directory) /
+        L"WindowsPowerShell\\v1.0\\powershell.exe";
+    std::wstring command = L"\"" + executable.wstring() +
+        L"\" -NoProfile -STA -ExecutionPolicy Bypass -File \"" + probe.wstring() +
+        L"\" -NonInteractive -ExpectedByte 65";
+    STARTUPINFOW startup{}; startup.cb = sizeof(startup);
+    PROCESS_INFORMATION process{};
+    ASSERT_TRUE(CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, FALSE,
+                              0, nullptr, nullptr, &startup, &process)) << GetLastError();
+    CloseHandle(process.hThread);
+    const ULONGLONG deadline = GetTickCount64() + 45000;
+    bool completed = false;
+    while (GetTickCount64() < deadline)
+    {
+        const DWORD result = MsgWaitForMultipleObjects(1, &process.hProcess, FALSE, 100, QS_ALLINPUT);
+        if (result == WAIT_OBJECT_0) { completed = true; break; }
+        if (result == WAIT_FAILED) break;
+        MSG message{};
+        while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&message); DispatchMessageW(&message);
+        }
+    }
+    DWORD exit_code = 1;
+    if (completed) GetExitCodeProcess(process.hProcess, &exit_code);
+    else { TerminateProcess(process.hProcess, 1); WaitForSingleObject(process.hProcess, 5000); }
+    CloseHandle(process.hProcess);
+    ASSERT_TRUE(completed) << "Separate clipboard consumer timed out";
+    EXPECT_EQ(0u, exit_code) << "Separate process could not read the expected file byte";
+}
+
 TEST_F(OleClipboardTest, DisconnectInvalidatesExistingOleStream)
 {
     ClipboardFilesWin windows([](const auto&) {});

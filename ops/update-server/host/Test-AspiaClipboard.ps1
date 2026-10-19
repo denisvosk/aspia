@@ -1,4 +1,5 @@
 #Requires -Version 5.1
+param([switch]$NonInteractive, [int]$ExpectedByte = -1)
 # Run on the destination PC. No administrator rights, config changes or clipboard writes.
 $ErrorActionPreference = 'Stop'
 Add-Type -TypeDefinition @'
@@ -13,7 +14,8 @@ public static class AspiaClipboardProbe {
     [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern uint RegisterClipboardFormat(string name);
     [DllImport("kernel32.dll")] public static extern IntPtr GlobalLock(IntPtr memory);
     [DllImport("kernel32.dll")] public static extern bool GlobalUnlock(IntPtr memory);
-    public static void Run() {
+    public static void Run(int expectedByte) {
+        Environment.ExitCode = 1;
         int init = OleInitialize(IntPtr.Zero);
         Console.WriteLine("OleInitialize: 0x{0:X8}", init);
         if (init < 0) return;
@@ -57,7 +59,10 @@ public static class AspiaClipboardProbe {
                     try {
                         Marshal.WriteInt32(count, 0);
                         Console.WriteLine("Stream Read: requesting first byte (up to 30 seconds)...");
-                        stream.Read(new byte[1], 1, count);
+                        byte[] buffer = new byte[1];
+                        stream.Read(buffer, 1, count);
+                        if (Marshal.ReadInt32(count) == 1 && (expectedByte < 0 || buffer[0] == expectedByte))
+                            Environment.ExitCode = 0;
                         Console.WriteLine("Stream Read: success, bytes={0}", Marshal.ReadInt32(count));
                     } finally { Marshal.FreeCoTaskMem(count); }
                 } finally { Marshal.ReleaseComObject(streamObject); }
@@ -71,8 +76,11 @@ public static class AspiaClipboardProbe {
     }
 }
 '@
-Write-Host 'On the SOURCE PC, select ONE nonempty ordinary file and press Ctrl+C now.'
-Write-Host 'Keep the Aspia session connected. Do not copy any commands/text after the file.'
-[void](Read-Host 'Then return here and press Enter (this PC is the paste destination)')
-[AspiaClipboardProbe]::Run()
+if (!$NonInteractive) {
+    Write-Host 'On the SOURCE PC, select ONE nonempty ordinary file and press Ctrl+C now.'
+    Write-Host 'Keep the Aspia session connected. Do not copy any commands/text after the file.'
+    [void](Read-Host 'Then return here and press Enter (this PC is the paste destination)')
+}
+[AspiaClipboardProbe]::Run($ExpectedByte)
+if ($NonInteractive) { exit [Environment]::ExitCode }
 [void](Read-Host 'Take a screenshot or copy this output AFTER the check. Press Enter to close')

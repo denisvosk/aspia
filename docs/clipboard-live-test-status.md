@@ -1,32 +1,50 @@
-# Live clipboard investigation — 2026-10-18 23:31 UTC
+# Live clipboard investigation — preview.17 follow-up
 
 User installed preview.17: Host and Console both report 2.7.1. Text copies in
-both directions. Copying a file makes Paste available on the opposite desktop,
-but pasting creates no file, in either direction. User has fallback RDP.
-This establishes that the advertised file formats reach the destination, but
-does not yet prove the FILECONTENTS/GetData/IStream request succeeds.
+both directions. Copying a file enables Paste, but pasting creates no file.
+Fallback RDP is available on the home test machine. No production rollout.
 
-Compared the local upstream checkout (tag v3.1.1) files:
-`common/win/file_object.cc`, `common/win/file_stream.cc`,
-`common/clipboard_win.cc`, `common/clipboard_file_transfer.*`.
-Upstream uses FILEGROUPDESCRIPTORW / FILECONTENTS / IStream with a separate
-logical CHANNEL_ID_FILE for chunks. Our 2.7 implementation is a separate
-compatibility implementation using ClipboardEvent on the existing session
-channel; it is not a literal backport. Logical channel IDs alone do not imply
-separate TCP ports.
+The separate-process probe now runs (the ambiguous C# STATSTG name is fixed).
+Observed: OleInitialize/OleGetClipboard/descriptor QueryGetData/GetData succeed,
+FILEGROUPDESCRIPTOR contains one entry, but FILECONTENTS QueryGetData and GetData
+return 0x80040064 (DV_E_FORMATETC). No network content read is reached.
 
-No root cause has yet been demonstrated. Existing tests perform synchronous
-in-process OLE stream reads and do not establish live Explorer cross-process
-behavior or asynchronous network callback delivery. Do not call preview.17
-production ready and do not enable the update feed.
+## Candidate cause and change
 
-`ops/update-server/host/Test-AspiaClipboard.ps1` probes the installed build from
-a separate Windows process: descriptor query/read, contents query/read, stream
-Stat and first-byte Read. It prints HRESULTs, counts and size, never file content,
-and changes neither settings nor clipboard contents. Run on the destination,
-wait at its prompt, then copy one nonempty regular file on the source and press
-Enter in the probe. This avoids replacing the copied file with the launch command.
-It uses the existing MSI; no binary rebuild was launched for this diagnostic.
+Upstream checkout v3.1.1 owns Host clipboard in the interactive UI process
+(source/host/ui/host_window.cc), whereas preview.17 owns it in the SYSTEM desktop
+agent. A firsthand Windows report describes the same descriptor-success /
+FileContents-0x80040064 failure across SYSTEM/user COM boundaries:
+https://learn.microsoft.com/en-us/answers/questions/1168537/oleclipboard-and-idataobject-under-local-system-ac
+This is a strong hypothesis, not a reproduced proof of the user's root cause.
 
-Next: inspect the user's output to identify the failing COM call, then reproduce
-that call with a Windows regression test before changing/rebuilding binaries.
+Move only Host file clipboard ownership into the existing interactive Host UI
+UserSessionAgent. Service forwards file events over authenticated existing UI IPC.
+Keep session negotiation, clipboard/file-transfer permission gates, peer IDs,
+path validation and disconnect invalidation. Reissue negotiation on UI reconnect.
+Invalidate UI file streams on pause/lock/secure desktop; resume on normal desktop.
+Plain text remains in the desktop agent. No global COM security relaxation,
+new TCP ports, Router/Relay changes or update-feed publication.
+
+The transport remains our 2.7-compatible implementation over ClipboardEvent;
+it is not a literal 3.x backport. Upstream uses a separate logical file channel.
+
+## Validation and next step
+
+Added a Windows OLE regression that publishes a virtual file and asks a separate
+Windows PowerShell 5.1 process to query the descriptor and stream, Stat and read
+an expected byte. Parent STA pumps COM messages; child has a bounded timeout.
+This covers cross-process OLE in one user identity, not the full installed Host
+service/user-IPC/network path. Existing protocol and same-process tests remain.
+
+Allow same-version MSI replacement for Host, Client and Console previews.
+Host CI checks both original 2.7.0 -> current and preview.17 -> current 2.7.1,
+configuration preservation, running service, and installed executable hashes.
+AllowSameVersionUpgrades also allows installing an older 2.7.1 preview; use the
+intended new preview and verify its workflow, not merely the displayed version.
+
+Local Linux checks: PowerShell parser for changed scripts, embedded C# compile,
+git diff whitespace check. Windows compilation/COM/MSI tests must run in Actions.
+After success, test one ordinary nonempty file both directions on the home PC
+using RDP fallback, then folder/large-file/disconnect behavior before rollout.
+If still failing, repeat the probe to distinguish COM access from stream timeout.

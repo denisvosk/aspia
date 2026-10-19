@@ -26,6 +26,14 @@ function Install-TestMsi([string]$path, [string]$name) {
     }
     (Get-Service aspia-host-service).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
 }
+$previousDir = Join-Path $work 'preview17'
+New-Item -ItemType Directory -Force $previousDir | Out-Null
+$previousName = "aspia-host-2.7.1-$packageArch.msi"
+gh release download 'v2.7.1-clipboard-preview.17' --repo $env:GITHUB_REPOSITORY --pattern $previousName --dir $previousDir --clobber
+if ($LASTEXITCODE) { throw 'Could not download the previously installed preview.17 for upgrade testing' }
+$previous = Join-Path $previousDir $previousName
+$previousHash = if ($Arch -eq 'x64') { 'e82fec2d9c42215fc82ba151c7b0c350240d50ddeb0f0610f111717fce5583c1' } else { '2eef47c374214a50cedca243ee4fcdff2730283ff76b389b5f48c8d6580055f1' }
+if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLower() -ne $previousHash) { throw 'Preview.17 MSI checksum mismatch' }
 $installed = $old
 try {
     Install-TestMsi $old 'install-original'
@@ -56,6 +64,34 @@ try {
     if (!(Test-Path $exe)) { throw 'Upgraded Host service executable missing' }
     if ((Get-Item $exe).VersionInfo.ProductVersion -notlike '2.7.1.*') { throw 'Host service was not upgraded to 2.7.1' }
     "Host $Arch 2.7.0 -> 2.7.1: service running and test configuration preserved." | Write-Host
+    function Assert-InstalledPayload {
+        $builtDir = Join-Path (Split-Path $PSScriptRoot -Parent) 'builds/ninja-multi-vcpkg-ci/Release'
+        foreach ($name in 'aspia_host_service.exe','aspia_host.exe','aspia_desktop_agent.exe') {
+            $actual = Join-Path (Split-Path $exe) $name
+            $expected = Join-Path $builtDir $name
+            if ((Get-FileHash $actual).Hash -ne (Get-FileHash $expected).Hash) {
+                throw "Installed executable was not replaced by this build: $name"
+            }
+        }
+    }
+    Assert-InstalledPayload
+    # Also exercise the user's exact situation: replace an existing 2.7.1 preview.
+    $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
+    if ($p.ExitCode -ne 0) { throw "Could not prepare same-version upgrade test: $($p.ExitCode)" }
+    $installed = $previous
+    Install-TestMsi $previous 'install-preview17'
+    $before = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
+    Install-TestMsi $NewMsi 'upgrade-preview17-to-current'
+    $installed = $NewMsi
+    $after = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
+    foreach ($key in $before.Keys) {
+        if ((ConvertTo-Json -InputObject $before[$key] -Depth 30 -Compress) -ne
+            (ConvertTo-Json -InputObject $after[$key] -Depth 30 -Compress)) {
+            throw "Host setting changed during same-version upgrade: $key"
+        }
+    }
+    Assert-InstalledPayload
+    "Host $Arch preview.17 -> current 2.7.1: service running, configuration preserved, installed binary hashes match this build." | Write-Host
 } finally {
     $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
     if ($p.ExitCode -notin 0,1605,3010) { Write-Warning "Cleanup MSI exit code: $($p.ExitCode)" }

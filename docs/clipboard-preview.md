@@ -41,3 +41,13 @@ CI собирает x86 и x86_64. О наличии конкретной арх
 Сборка описана в `.github/workflows/clipboard-windows.yml`: MSVC v142, CMake 3.28.4, WiX 3, vcpkg4aspia 7eb700c9688daed6d8bdcdc571ebe3eedea6a774, статические зависимости x86/x64 Release. Для удалённых пакетов инструментов MSYS2 сохранён обновлённый каталог URL/SHA512 из microsoft/vcpkg@2200159cd465157f20133e363e4604ac4d68181b; версии библиотек Aspia не обновляются. Workflow собирает и проверяет исходники, создаёт шесть MSI с оригинальными UpgradeCode и языковыми ресурсами, затем сохраняет исходники и SHA256 в приватный черновик релиза. Запуск: изменение `ci/build-request.txt` в PR либо workflow_dispatch, когда workflow доступен в основной ветке.
 
 При передаче изменённых MSI другим людям предоставляйте соответствующие исходники этой же сборки, LICENSE.md и сведения об изменениях. Исходники включены в тот же релиз. Перед дальнейшим распространением отдельно учтите лицензии статически включённых библиотек.
+
+
+## Follow-up to preview.17
+
+Host file clipboard now belongs to the interactive user process instead of the
+SYSTEM desktop agent. This targets the live FILECONTENTS 0x80040064 failure.
+It still requires two-computer acceptance testing after the Windows workflow.
+MSIs permit replacement of the earlier 2.7.1 preview; Host CI verifies both the
+original 2.7.0 upgrade and preview.17 replacement, including installed file hashes.
+Use the intended new preview; the displayed 2.7.1 version alone does not identify it.

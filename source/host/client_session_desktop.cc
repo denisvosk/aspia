@@ -451,13 +451,7 @@ void ClientSessionDesktop::setScreenList(const proto::ScreenList& list)
 //--------------------------------------------------------------------------------------------------
 void ClientSessionDesktop::setScreenType(const proto::ScreenType& type)
 {
-    if (file_clipboard_enabled_ && desktop_session_proxy_)
-    {
-        proto::ClipboardFile message;
-        message.set_type(proto::ClipboardFile::HELLO);
-        message.set_peer_id(id());
-        desktop_session_proxy_->injectClipboardEvent(common::fileClipboardEvent(message));
-    }
+    syncFileClipboard();
     LOG(LS_INFO) << "Send screen type to client";
 
     outgoing_message_->Clear();
@@ -1089,13 +1083,22 @@ void ClientSessionDesktop::disconnectFileClipboard()
 {
     if (!file_clipboard_enabled_) return;
     file_clipboard_enabled_ = false;
-    if (desktop_session_proxy_)
+    if (delegate_)
     {
         proto::ClipboardFile message;
         message.set_type(proto::ClipboardFile::DISCONNECT);
         message.set_peer_id(id());
-        desktop_session_proxy_->injectClipboardEvent(common::fileClipboardEvent(message));
+        delegate_->onClientSessionFileClipboard(common::fileClipboardEvent(message));
     }
+}
+
+void ClientSessionDesktop::syncFileClipboard()
+{
+    if (!file_clipboard_enabled_ || !delegate_) return;
+    proto::ClipboardFile message;
+    message.set_type(proto::ClipboardFile::HELLO);
+    message.set_peer_id(id());
+    delegate_->onClientSessionFileClipboard(common::fileClipboardEvent(message));
 }
 
 void ClientSessionDesktop::readClipboard(const proto::ClipboardEvent& event)
@@ -1114,7 +1117,7 @@ void ClientSessionDesktop::readClipboard(const proto::ClipboardEvent& event)
     // DISCONNECT is a service control, never accepted as a peer's routing command.
     else if (!file_clipboard_enabled_ || message.type() == proto::ClipboardFile::DISCONNECT) return;
     message.set_peer_id(id());
-    desktop_session_proxy_->injectClipboardEvent(common::fileClipboardEvent(message));
+    delegate_->onClientSessionFileClipboard(common::fileClipboardEvent(message));
 #endif
 }
 

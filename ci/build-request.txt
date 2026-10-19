@@ -1,2 +1,3 @@
-Build x86 and x64 with normalized native MSI paths for isolated Host upgrade tests.
-Keep protocol/OLE tests, 23 installer cultures, extraction and configuration-preservation checks.
+Build x86 and x64: route file clipboard through interactive Host user process.
+Run separate-process OLE consumer and verify preview.17 same-version MSI replacement.
+Keep protocol tests, all installer cultures, 2.7.0 upgrade and configuration checks.
