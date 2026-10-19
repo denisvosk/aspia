@@ -85,7 +85,7 @@ try {
     Run-Native $Nssm @('set','AspiaWebGateway','AppParameters',('"' + (Join-Path $root 'server.mjs') + '"'))
     Run-Native $Nssm @('set','AspiaWebGateway','ObjectName','NT AUTHORITY\LocalService')
     Run-Native $Nssm @('set','AspiaWebGateway','Start','SERVICE_AUTO_START')
-    Run-Native $Nssm @('set','AspiaWebGateway','AppKillProcessTree','1')
+    # Do not require AppKillProcessTree: older NSSM versions do not expose it.
     Run-Native $Nssm @('set','AspiaWebGateway','AppRestartDelay','5000')
     Run-Native $Nssm @('set','AspiaWebGateway','AppStdout','NUL')
     Run-Native $Nssm @('set','AspiaWebGateway','AppStderr','NUL')
