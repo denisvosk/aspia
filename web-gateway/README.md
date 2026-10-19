@@ -132,3 +132,5 @@ The separate workflow does not rebuild the six clipboard MSI packages.
 License: GPL-3.0-or-later, derived from Aspia. Preserve upstream notices and provide
 the matching source commit/repository with distributed packages. Node and third-party
 licenses are included alongside the executable.
+
+Optional UI smoke test: install Playwright in a disposable development environment, with OpenSSL available, then run `node web-gateway/test/browser-smoke.mjs`. Set `PW_EXECUTABLE` if Chromium is outside Playwright's cache. It uses a loopback-only self-signed TLS endpoint with certificate checking disabled only for that test browser context and a fake native worker. It does not connect to a real Host. The author ran this test successfully for HTTPS login, cookie, rendered PNG, Unicode input, admin list, disconnect and logout.

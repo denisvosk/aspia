@@ -1,6 +1,6 @@
 // Test double for the native process protocol, never included in the deployable package.
 import { createInterface } from 'node:readline';
-const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jGxkAAAAASUVORK5CYII=';
+const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGOQDEgBAAFTAM4KP2oUAAAAAElFTkSuQmCC';
 const lines = createInterface({input:process.stdin});
 lines.on('line', line => {
   const c=JSON.parse(line);
