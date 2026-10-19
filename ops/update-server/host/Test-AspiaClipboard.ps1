@@ -50,7 +50,7 @@ public static class AspiaClipboardProbe {
                 object streamObject = Marshal.GetObjectForIUnknown(medium.unionmember);
                 try {
                     IStream stream = (IStream)streamObject;
-                    STATSTG stat;
+                    System.Runtime.InteropServices.ComTypes.STATSTG stat;
                     stream.Stat(out stat, 1);
                     Console.WriteLine("Stream Stat: size={0}", stat.cbSize);
                     IntPtr count = Marshal.AllocCoTaskMem(4);
