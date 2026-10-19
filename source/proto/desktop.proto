@@ -65,6 +65,17 @@ message ClipboardEvent
 {
     string mime_type = 1;
     bytes data = 2;
+
+    // Optional rich formats accompany the legacy plain-text fallback atomically.
+    // HTML is the complete Windows CF_HTML payload, including its byte offsets.
+    message Format
+    {
+        enum Type { UNKNOWN = 0; RTF = 1; HTML = 2; PNG = 3; }
+        Type type = 1;
+        bytes data = 2;
+        bool compressed = 3; // ZSTD; decoded size is bounded by the receiver.
+    }
+    repeated Format format = 3;
 }
 
 message CursorShape
@@ -273,6 +284,7 @@ message DesktopConfig
     uint32 compress_ratio        = 5;
     uint32 scale_factor          = 6; // Deprecated. Must be equal to 100.
     AudioEncoding audio_encoding = 7;
+    bool enable_rich_clipboard = 8; // Negotiated via rich_clipboard_v1.
 }
 
 message HostToClient

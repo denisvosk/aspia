@@ -29,6 +29,7 @@ class MessageWindow;
 } // namespace base::win
 
 namespace common {
+class ClipboardFilesWin;
 
 class ClipboardWin final : public Clipboard
 {
@@ -40,6 +41,8 @@ protected:
     // Clipboard implementation.
     void init() final;
     void setData(const std::string& data) final;
+    void setContent(const std::string& text, const proto::ClipboardEvent& content) final;
+    void setFileData(const proto::ClipboardEvent& event) final;
 
 private:
     void onClipboardUpdate();
@@ -49,6 +52,7 @@ private:
 
     // Used to subscribe to WM_CLIPBOARDUPDATE messages.
     std::unique_ptr<base::win::MessageWindow> window_;
+    std::unique_ptr<ClipboardFilesWin> files_;
 
     DISALLOW_COPY_AND_ASSIGN(ClipboardWin);
 };

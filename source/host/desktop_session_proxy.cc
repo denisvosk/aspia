@@ -17,6 +17,7 @@
 //
 
 #include "host/desktop_session_proxy.h"
+#include "common/clipboard_file_transfer.h"
 
 #include "base/logging.h"
 #include "base/environment.h"
@@ -215,7 +216,12 @@ void DesktopSessionProxy::injectMouseEvent(const proto::MouseEvent& event)
 void DesktopSessionProxy::injectClipboardEvent(const proto::ClipboardEvent& event)
 {
     if (is_paused_)
-        return;
+    {
+        proto::ClipboardFile message;
+        // Session cleanup must reach the agent even while user input is paused.
+        if (!common::parseFileClipboard(event, &message) ||
+            message.type() != proto::ClipboardFile::DISCONNECT) return;
+    }
 
     if (desktop_session_)
         desktop_session_->injectClipboardEvent(event);

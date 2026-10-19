@@ -17,6 +17,8 @@
 //
 
 #include "common/clipboard_win.h"
+#include "common/clipboard_files_win.h"
+#include "common/clipboard_content_win.h"
 
 #include "base/logging.h"
 #include "base/strings/string_util.h"
@@ -44,6 +46,7 @@ ClipboardWin::~ClipboardWin()
         return;
     }
 
+    files_.reset();
     RemoveClipboardFormatListener(window_->hwnd());
     window_.reset();
 }
@@ -68,6 +71,9 @@ void ClipboardWin::init()
         return;
     }
 
+    files_ = std::make_unique<ClipboardFilesWin>(
+        [this](const proto::ClipboardEvent& event) { sendEvent(event); });
+
     if (!AddClipboardFormatListener(window_->hwnd()))
     {
         PLOG(LS_ERROR) << "AddClipboardFormatListener failed";
@@ -78,52 +84,15 @@ void ClipboardWin::init()
 //--------------------------------------------------------------------------------------------------
 void ClipboardWin::setData(const std::string& data)
 {
-    if (!window_)
-    {
-        LOG(LS_ERROR) << "Window not created";
-        return;
-    }
+    setContent(data, proto::ClipboardEvent());
+}
 
-    std::wstring text;
-    if (!base::utf8ToWide(base::replaceLfByCrLf(data), &text))
-    {
-        LOG(LS_ERROR) << "Couldn't convert data to unicode";
-        return;
-    }
-
-    base::win::ScopedClipboard clipboard;
-    if (!clipboard.init(window_->hwnd()))
-    {
-        PLOG(LS_ERROR) << "Couldn't open the clipboard";
-        return;
-    }
-
-    clipboard.empty();
-
-    if (data.empty())
-        return;
-
-    HGLOBAL text_global = GlobalAlloc(GMEM_MOVEABLE, (text.size() + 1) * sizeof(wchar_t));
-    if (!text_global)
-    {
-        PLOG(LS_ERROR) << "GlobalAlloc failed";
-        return;
-    }
-
-    LPWSTR text_global_locked = reinterpret_cast<LPWSTR>(GlobalLock(text_global));
-    if (!text_global_locked)
-    {
-        PLOG(LS_ERROR) << "GlobalLock failed";
-        GlobalFree(text_global);
-        return;
-    }
-
-    memcpy(text_global_locked, text.data(), text.size() * sizeof(wchar_t));
-    text_global_locked[text.size()] = 0;
-
-    GlobalUnlock(text_global);
-
-    clipboard.setData(CF_UNICODETEXT, text_global);
+void ClipboardWin::setContent(const std::string& text, const proto::ClipboardEvent& content)
+{
+    if (!window_) return;
+    if (files_) files_->resetRemote();
+    if (!writeClipboardContentWin(window_->hwnd(), text, content))
+        LOG(LS_ERROR) << "Unable to write clipboard content";
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -146,46 +115,18 @@ bool ClipboardWin::onMessage(UINT message, WPARAM /* wParam */, LPARAM /* lParam
 //--------------------------------------------------------------------------------------------------
 void ClipboardWin::onClipboardUpdate()
 {
-    if (!IsClipboardFormatAvailable(CF_UNICODETEXT))
-        return;
+    if (files_ && files_->onClipboardUpdate(window_->hwnd())) return;
+    // Preserve the whole incoming bundle instead of echoing its plain text back.
+    if (GetClipboardOwner() == window_->hwnd()) return;
+    std::string text;
+    proto::ClipboardEvent content;
+    if (readClipboardContentWin(window_->hwnd(), &text, &content)) onData(text, content);
+}
 
-    std::string data;
-
-    // Add a scope, so that we keep the clipboard open for as short a time as possible.
-    {
-        base::win::ScopedClipboard clipboard;
-
-        if (!clipboard.init(window_->hwnd()))
-        {
-            PLOG(LS_ERROR) << "Couldn't open the clipboard";
-            return;
-        }
-
-        HGLOBAL text_global = clipboard.data(CF_UNICODETEXT);
-        if (!text_global)
-        {
-            PLOG(LS_ERROR) << "Couldn't get data from the clipboard";
-            return;
-        }
-
-        {
-            base::win::ScopedHGLOBAL<wchar_t> text_lock(text_global);
-            if (!text_lock.get())
-            {
-                PLOG(LS_ERROR) << "Couldn't lock clipboard data";
-                return;
-            }
-
-            if (!base::wideToUtf8(text_lock.get(), &data))
-            {
-                LOG(LS_ERROR) << "Couldn't convert data to utf8";
-                return;
-            }
-        }
-    }
-
-    if (!data.empty())
-        onData(base::replaceCrLfByLf(data));
+void ClipboardWin::setFileData(const proto::ClipboardEvent& event)
+{
+    proto::ClipboardFile message;
+    if (files_ && parseFileClipboard(event, &message)) files_->receive(message);
 }
 
 } // namespace common

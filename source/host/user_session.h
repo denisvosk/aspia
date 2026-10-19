@@ -119,6 +119,7 @@ protected:
     void onUnconfirmedSessionReject(uint32_t id) final;
 
     // ClientSession::Delegate implementation.
+    void onClientSessionFileClipboard(const proto::ClipboardEvent& event) final;
     void onClientSessionConfigured() final;
     void onClientSessionFinished() final;
     void onClientSessionVideoRecording(
@@ -162,6 +163,7 @@ private:
     std::string one_time_password_;
     uint32_t one_time_sessions_ = 0;
 
+    bool file_clipboard_desktop_ = false;
     bool connection_confirmation_ = false;
     SystemSettings::NoUserAction no_user_action_ = SystemSettings::NoUserAction::ACCEPT;
     std::chrono::milliseconds auto_confirmation_interval_ { 0 };

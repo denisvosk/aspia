@@ -24,6 +24,7 @@ syntax = "proto3";
 option optimize_for = LITE_RUNTIME;
 
 import "common.proto";
+import "desktop.proto";
 import "text_chat.proto";
 
 package proto.internal;
@@ -131,6 +132,7 @@ message UiToService
     ConnectConfirmation connect_confirmation = 3;
     ServiceControl control = 4;
     TextChat text_chat = 5;
+    ClipboardEvent file_clipboard_event = 6;
 }
 
 message ServiceToUi
@@ -142,4 +144,5 @@ message ServiceToUi
     ConnectConfirmationRequest connect_confirmation_request = 5;
     VideoRecordingState video_recording_state = 6;
     TextChat text_chat = 7;
+    ClipboardEvent file_clipboard_event = 8;
 }

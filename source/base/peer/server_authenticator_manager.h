@@ -44,6 +44,7 @@ public:
         std::string architecture;
         std::string user_name;
         uint32_t session_type = 0;
+        uint32_t allowed_session_types = 0;
     };
 
     class Delegate

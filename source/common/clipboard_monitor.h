@@ -48,6 +48,8 @@ protected:
 
 private:
     common::Clipboard::Delegate* delegate_ = nullptr;
+    std::shared_ptr<int> lifetime_ = std::make_shared<int>(0);
+    const std::weak_ptr<int> weak_lifetime_ = lifetime_;
 
     std::unique_ptr<base::Thread> thread_;
     std::shared_ptr<base::TaskRunner> caller_task_runner_;

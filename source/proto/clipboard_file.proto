@@ -1,0 +1,22 @@
+// Aspia 2.7 community continuation, 2026. GPL-3.0-or-later.
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+package proto;
+import "file_transfer.proto";
+
+// Carried inside the existing 2.7 ClipboardEvent only after capability negotiation.
+// peer_id is INTERNAL routing: Host overwrites it from the authenticated session,
+// and removes it before sending a message to the network client.
+message ClipboardFile {
+  enum Type { UNKNOWN = 0; HELLO = 1; OFFER = 2; READ = 3; DATA = 4;
+              CANCEL = 5; ERROR = 6; DISCONNECT = 7; }
+  message Entry { string name = 1; uint64 size = 2; bool directory = 3; }
+  Type type = 1;
+  uint32 peer_id = 2;
+  uint64 offer_id = 3;
+  uint64 transfer_id = 4;
+  uint32 index = 5;
+  uint64 offset = 6;
+  repeated Entry entry = 7;
+  FilePacket packet = 8;
+}
