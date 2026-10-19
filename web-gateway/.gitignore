@@ -1,0 +1,5 @@
+config.json
+private/
+logs/
+node.exe
+aspia_web_bridge.exe

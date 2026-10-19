@@ -1,0 +1,8 @@
+{
+  "publicOrigin": "https://192.0.2.1",
+  "port": 8085,
+  "router": { "address": "192.0.2.1", "port": 8060 },
+  "usersFile": "private/users.json",
+  "bridgePath": "aspia_web_bridge.exe",
+  "maxSessions": 2
+}

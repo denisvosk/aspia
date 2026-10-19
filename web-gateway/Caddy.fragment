@@ -1,0 +1,9 @@
+# Add INSIDE the existing 192.0.2.1 site block, before its catch-all handle.
+# Keep existing TLS settings, download root and Telegram virtual host unchanged.
+# Do not use handle_path: the service expects the /remote prefix.
+handle /remote {
+    redir /remote/ 308
+}
+handle /remote/* {
+    reverse_proxy 127.0.0.1:8085
+}

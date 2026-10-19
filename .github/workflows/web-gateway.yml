@@ -1,0 +1,113 @@
+name: Aspia Web Gateway prototype
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/web-gateway.yml'
+      - 'source/client/web_bridge.cc'
+      - 'source/client/CMakeLists.txt'
+      - 'web-gateway/**'
+      - 'ci/package-web-gateway.ps1'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: write
+concurrency:
+  group: web-gateway-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  windows:
+    name: windows-${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64]
+    runs-on: windows-2022
+    timeout-minutes: 120
+    env:
+      VCPKG_ROOT: ${{ github.workspace }}/vcpkg4aspia
+      VCPKG_INSTALLED_DIR: ${{ github.workspace }}/builds/ninja-multi-vcpkg-ci/vcpkg_installed
+      VCPKG_TRIPLET: ${{ matrix.arch }}-windows-static
+      VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.arch }}-windows-static
+      VCPKG_DEFAULT_BINARY_CACHE: C:/aspia-vcpkg-cache
+      VCPKG_BINARY_SOURCES: default,readwrite
+      VCPKG_MAX_CONCURRENCY: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: dchapyshev/vcpkg4aspia
+          ref: 7eb700c9688daed6d8bdcdc571ebe3eedea6a774
+          path: vcpkg4aspia
+      - uses: actions/cache/restore@v4
+        id: cache
+        with:
+          path: C:/aspia-vcpkg-cache
+          key: aspia-27-v142-rel-${{ matrix.arch }}-7eb700c9-${{ github.run_id }}
+          restore-keys: aspia-27-v142-rel-${{ matrix.arch }}-7eb700c9-
+      - name: Build tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          python -m pip install cmake==3.28.4 ninja==1.11.1.1
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $vs = & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" -latest -property installationPath
+          if (!$vs) { throw 'Visual Studio installation was not found.' }
+          # Hosted images may omit v142's matching ATL and MFC components.
+          # Verify this before spending time building Qt and other dependencies.
+          if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/atlbase.h") -or !(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/afxres.h")) {
+            $p = Start-Process "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/setup.exe" -ArgumentList @('modify', '--installPath', "`"$vs`"", '--add', 'Microsoft.VisualStudio.Component.VC.v142.x86.x64', '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.ATL', '--add', 'Microsoft.VisualStudio.Component.VC.14.29.16.11.MFC', '--quiet', '--norestart') -Wait -PassThru
+            if ($p.ExitCode -notin 0,3010) { throw "MSVC installation failed: $($p.ExitCode)" }
+          }
+          foreach ($header in 'atlbase.h','afxres.h') {
+            if (!(Test-Path "$vs/VC/Tools/MSVC/14.29*/atlmfc/include/$header")) {
+              throw "ATL/MFC v142 installation did not provide $header."
+            }
+          }
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+          toolset: 14.29
+      - name: Configure and build dependencies
+        # Leave time to save completed packages even if the first Qt build times out.
+        timeout-minutes: 100
+        run: |
+          $env:VCPKG_ROOT = "$env:GITHUB_WORKSPACE/vcpkg4aspia"
+          "VCPKG_ROOT=$env:VCPKG_ROOT" >> $env:GITHUB_ENV
+          foreach ($header in 'atlbase.h','afxres.h') {
+            $includeDirs = @($env:INCLUDE -split ';' | Where-Object { $_ -and (Test-Path (Join-Path $_ $header)) })
+            if (!$includeDirs.Count) { throw "The v142 developer environment does not expose $header." }
+          }
+          Copy-Item ci/vcpkg-tools/vcpkg_acquire_msys.cmake "$env:VCPKG_ROOT/scripts/cmake/vcpkg_acquire_msys.cmake" -Force
+          $pkg = Get-Command pkg-config.exe -ErrorAction SilentlyContinue
+          if (!$pkg) {
+            choco install pkgconfiglite --version=0.28.0 --yes --no-progress --limit-output
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+            $pkgFile = Get-ChildItem 'C:/ProgramData/chocolatey/lib/pkgconfiglite' -Filter pkg-config.exe -Recurse | Select-Object -First 1
+            if (!$pkgFile) { throw 'pkg-config installation failed' }
+            $env:PKG_CONFIG = $pkgFile.FullName
+          } else { $env:PKG_CONFIG = $pkg.Source }
+          "PKG_CONFIG=$env:PKG_CONFIG" >> $env:GITHUB_ENV
+          Write-Host "Using pkg-config: $env:PKG_CONFIG"
+          cmake --preset ninja-multi-vcpkg-ci -DASPIA_BUILD_WEB_BRIDGE=ON -DVCPKG_OVERLAY_TRIPLETS="$env:GITHUB_WORKSPACE/ci/triplets"
+          if ($LASTEXITCODE) {
+            $failure = $LASTEXITCODE
+            Get-ChildItem "$env:VCPKG_ROOT/buildtrees" -Filter *.log -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 4 | ForEach-Object {
+              Write-Host $_.FullName
+              Get-Content $_.FullName -Tail 80
+            }
+            exit $failure
+          }
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: C:/aspia-vcpkg-cache
+          key: aspia-27-v142-rel-${{ matrix.arch }}-7eb700c9-${{ github.run_id }}
+      - name: Build native session worker
+        run: cmake --build --preset ninja-multi-vcpkg-ci-release --target aspia_web_bridge --parallel 4
+      - name: Package and verify gateway
+        run: ./ci/package-web-gateway.ps1
+        env:
+          GH_TOKEN: ${{ github.token }}
