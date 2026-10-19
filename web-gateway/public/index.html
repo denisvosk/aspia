@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aspia · Веб-консоль</title><link rel="stylesheet" href="style.css"><script src="app.js" defer></script></head>
+<body><header><div><strong>Aspia</strong><span>Веб-консоль · тестовая версия</span></div><div><span id="identity"></span><button id="logout" hidden>Выйти</button></div></header>
+<main><p id="notice" role="status" aria-live="polite">Войдите в веб-консоль.</p>
+<section id="loginPanel" class="card narrow"><h1>Вход в веб-консоль</h1><p>Учётную запись выдаёт ваш администратор.</p>
+<form id="loginForm" autocomplete="off"><label>Логин веб-консоли<input id="webUser" required maxlength="64" autocomplete="off"></label>
+<label>Пароль веб-консоли<input id="webPassword" type="password" required maxlength="256" autocomplete="new-password"></label><button class="primary" type="submit">Войти</button></form></section>
+<section id="connectPanel" class="card" hidden><h1>Подключение к компьютеру</h1><p>Маршрутизатор: <b id="router"></b>. Пароли Aspia действуют только в этом сеансе.</p>
+<form id="connectForm" autocomplete="off"><div class="columns"><fieldset><legend>Учётная запись Aspia Router</legend><label>Логин маршрутизатора<input id="routerUser" required maxlength="256" autocomplete="off"></label><label>Пароль маршрутизатора<input id="routerPassword" type="password" required maxlength="256" autocomplete="new-password"></label></fieldset>
+<fieldset><legend>Удалённый компьютер</legend><label>ID компьютера<input id="hostId" required inputmode="numeric" pattern="[0-9 ]{1,20}" maxlength="20" autocomplete="off"></label><label>Логин хоста<input id="hostUser" maxlength="256" autocomplete="off" placeholder="Для временного пароля — по правилам вашего хоста"></label><label>Пароль хоста<input id="hostPassword" type="password" required maxlength="256" autocomplete="new-password"></label></fieldset></div>
+<p class="hint">Поля очищаются после отправки. Менеджер паролей браузера может предлагать сохранение — отклоните его для временных паролей.</p><button class="primary" type="submit">Подключиться</button></form></section>
+<section id="desktopPanel" hidden><div class="toolbar"><b id="connectionState">Подключение…</b><button id="release">Отпустить клавиши</button><button id="altTab">Alt + Tab</button><button id="startMenu">Пуск</button><button id="fit">Масштаб: по ширине</button><button id="disconnect" class="danger">Завершить сеанс</button></div>
+<p class="hint">Щёлкните по рабочему столу для управления. Escape возвращает фокус странице. Сочетания браузера могут перехватываться; используйте кнопки выше.</p>
+<div id="viewport"><canvas id="desktop" width="960" height="540" tabindex="0" aria-label="Удалённый рабочий стол"></canvas></div>
+<form id="textForm" class="textbar"><label for="textInput">Ввести текст на удалённом ПК</label><textarea id="textInput" rows="2" maxlength="4000" placeholder="Текст будет набран в активном поле удалённого приложения"></textarea><button type="submit">Ввести текст</button></form></section>
+<section id="adminPanel" class="card" hidden><div class="toolbar"><h2>Активные сеансы</h2><button id="refreshAdmin">Обновить</button></div><p class="hint">Видны только сеансы этого веб-шлюза. Содержимое экрана и пароли других пользователей не показываются.</p><div id="sessionList"></div></section>
+</main><footer>Прототип: экран, мышь и клавиатура. Без звука и передачи файлов через браузер. Закрытие вкладки завершает сеанс; при потере связи — не позднее 35 секунд.</footer></body></html>

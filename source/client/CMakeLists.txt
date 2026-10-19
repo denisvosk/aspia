@@ -373,3 +373,12 @@ if (APPLE)
     set_target_properties(aspia_client PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${aspia_client_PLIST})
     set_target_properties(aspia_client PROPERTIES MACOSX_BUNDLE_ICONFILE ${aspia_client_ICON})
 endif()
+
+# Opt-in: separate headless session worker for the experimental web gateway.
+option(ASPIA_BUILD_WEB_BRIDGE "Build the Windows web gateway session worker" OFF)
+if(WIN32 AND ASPIA_BUILD_WEB_BRIDGE)
+    add_executable(aspia_web_bridge web_bridge.cc)
+    target_link_libraries(aspia_web_bridge aspia_client_core ${CLIENT_PLATFORM_LIBS})
+    qt5_import_plugins(aspia_web_bridge INCLUDE "" EXCLUDE "" INCLUDE_BY_TYPE ""
+        EXCLUDE_BY_TYPE imageformats)
+endif()
