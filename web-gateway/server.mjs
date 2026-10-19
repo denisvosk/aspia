@@ -92,7 +92,6 @@ export function createGateway(config, root = here, hooks = {}) {
       if (req.headers.host !== new URL(c.publicOrigin).host) throw fail(403, 'Invalid host');
       if (!['GET', 'POST'].includes(req.method)) throw fail(405, 'Method not allowed');
       if (req.method === 'POST' && req.headers.origin !== c.publicOrigin) throw fail(403, 'Invalid origin');
-      if (req.headers['sec-fetch-site'] === 'cross-site') throw fail(403, 'Cross-site request');
       const url = new URL(req.url, c.publicOrigin), route = url.pathname;
       const staticFiles = new Map([[base + '/', ['index.html', 'text/html']], [base + '/app.js', ['app.js', 'text/javascript']], [base + '/style.css', ['style.css', 'text/css']]]);
       if (req.method === 'GET' && staticFiles.has(route)) {
@@ -100,6 +99,9 @@ export function createGateway(config, root = here, hooks = {}) {
         res.writeHead(200, { 'Content-Type': type + '; charset=utf-8' });
         res.end(fs.readFileSync(path.join(root, 'public', file))); return;
       }
+      // Public login assets may be opened from an external link. API requests
+      // still require the fetch-metadata, Origin, session and CSRF checks.
+      if (req.headers['sec-fetch-site'] === 'cross-site') throw fail(403, 'Cross-site request');
       if (route === base + '/api/login' && req.method === 'POST') {
         // Caddy overwrites X-Forwarded-For for an untrusted public peer. Never use it for authorization.
         const ip = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(',').at(-1).trim().slice(0, 128);

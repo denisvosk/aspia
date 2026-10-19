@@ -57,6 +57,15 @@ test('static server has no path traversal or configuration route',async()=>{
   }
   const r=await rawFetch(url+'/remote/',{headers:{Host:'remote.example.test'}});assert.equal(r.status,200);assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);
 });
+test('external links open public login assets while cross-site API requests remain blocked',async()=>{
+  for(const route of ['/remote/','/remote/app.js','/remote/style.css']) {
+    const r=await rawFetch(url+route,{headers:{Host:'remote.example.test','Sec-Fetch-Site':'cross-site','Sec-Fetch-Mode':'navigate'}});
+    assert.equal(r.status,200);
+  }
+  assert.equal((await call('me',{login:alice,headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
+  assert.equal((await call('sessions',{login:alice,body:credentials,headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
+  assert.equal((await call('login',{body:{user:'alice',password},origin:'https://evil.example',headers:{'Sec-Fetch-Site':'cross-site'}})).status,403);
+});
 test('session ownership protects screen, input, status and stop',async()=>{
   const id=await connect(alice);
   for(const action of ['frame','state'])assert.equal((await call(`sessions/${id}/${action}`,{login:bob})).status,404);
