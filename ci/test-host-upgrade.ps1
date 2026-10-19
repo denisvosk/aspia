@@ -26,14 +26,14 @@ function Install-TestMsi([string]$path, [string]$name) {
     }
     (Get-Service aspia-host-service).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
 }
-$previousDir = Join-Path $work 'preview17'
+$previousDir = Join-Path $work 'preview18'
 New-Item -ItemType Directory -Force $previousDir | Out-Null
 $previousName = "aspia-host-2.7.1-$packageArch.msi"
-gh release download 'v2.7.1-clipboard-preview.17' --repo $env:GITHUB_REPOSITORY --pattern $previousName --dir $previousDir --clobber
-if ($LASTEXITCODE) { throw 'Could not download the previously installed preview.17 for upgrade testing' }
+gh release download 'v2.7.1-clipboard-preview.18' --repo $env:GITHUB_REPOSITORY --pattern $previousName --dir $previousDir --clobber
+if ($LASTEXITCODE) { throw 'Could not download the previously installed preview.18 for upgrade testing' }
 $previous = Join-Path $previousDir $previousName
-$previousHash = if ($Arch -eq 'x64') { 'e82fec2d9c42215fc82ba151c7b0c350240d50ddeb0f0610f111717fce5583c1' } else { '2eef47c374214a50cedca243ee4fcdff2730283ff76b389b5f48c8d6580055f1' }
-if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLower() -ne $previousHash) { throw 'Preview.17 MSI checksum mismatch' }
+$previousHash = if ($Arch -eq 'x64') { 'd80c5167dc7376e14d1b521b85162b33ae149d3f23991dabe75bd40508aef83c' } else { 'dd5e9d72c047c82577d5b09101d5fbd13769368f8d3a9bf6b04a9b065cb2254c' }
+if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLower() -ne $previousHash) { throw 'Preview.18 MSI checksum mismatch' }
 $installed = $old
 try {
     Install-TestMsi $old 'install-original'
@@ -79,9 +79,9 @@ try {
     $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
     if ($p.ExitCode -ne 0) { throw "Could not prepare same-version upgrade test: $($p.ExitCode)" }
     $installed = $previous
-    Install-TestMsi $previous 'install-preview17'
+    Install-TestMsi $previous 'install-preview18'
     $before = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
-    Install-TestMsi $NewMsi 'upgrade-preview17-to-current'
+    Install-TestMsi $NewMsi 'upgrade-preview18-to-current'
     $installed = $NewMsi
     $after = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
     foreach ($key in $before.Keys) {
@@ -91,7 +91,7 @@ try {
         }
     }
     Assert-InstalledPayload
-    "Host $Arch preview.17 -> current 2.7.1: service running, configuration preserved, installed binary hashes match this build." | Write-Host
+    "Host $Arch preview.18 -> current 2.7.1: service running, configuration preserved, installed binary hashes match this build." | Write-Host
 } finally {
     $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
     if ($p.ExitCode -notin 0,1605,3010) { Write-Warning "Cleanup MSI exit code: $($p.ExitCode)" }

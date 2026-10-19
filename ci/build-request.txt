@@ -3,3 +3,4 @@ Test async lifecycle, cancellation/repaste and a cross-process background folder
 Include negotiated RTF, full CF_HTML and PNG/DIB clipboard with plain-text fallback for 2.7.
 Test atomic multi-format content, format changes, size bounds and Windows format conversions.
 Keep protocol tests, all installer cultures, 2.7.0 upgrade and configuration checks.
+Use the retained preview.18 MSI and pinned hashes for same-version upgrade testing; preview.17 is no longer available.
