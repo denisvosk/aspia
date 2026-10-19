@@ -6,6 +6,7 @@ find_package(Protobuf REQUIRED)
 find_package(OpenSSL REQUIRED)
 find_package(ICU REQUIRED COMPONENTS uc)
 find_package(GTest REQUIRED)
+find_library(ZSTD_LIBRARY NAMES zstd REQUIRED)
 get_filename_component(ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto")
 set(PROTO_SOURCES)
@@ -18,6 +19,8 @@ endforeach()
 add_executable(clipboard_protocol_tests
     ${PROTO_SOURCES}
     ${ROOT}/source/common/clipboard_file_transfer.cc
+    ${ROOT}/source/common/clipboard.cc
+    ${ROOT}/source/common/clipboard_content_unittest.cc
     ${ROOT}/source/common/clipboard_file_transfer_unittest.cc
     ${ROOT}/source/common/file_packetizer.cc
     ${ROOT}/source/client/input_event_filter.cc
@@ -36,6 +39,6 @@ add_executable(clipboard_protocol_tests
     ${ROOT}/source/base/strings/string_util_constants.cc
     ${ROOT}/source/base/strings/unicode.cc)
 target_include_directories(clipboard_protocol_tests PRIVATE "${ROOT}/source" "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(clipboard_protocol_tests PRIVATE protobuf::libprotobuf-lite OpenSSL::Crypto ICU::uc GTest::gtest_main)
+target_link_libraries(clipboard_protocol_tests PRIVATE protobuf::libprotobuf-lite OpenSSL::Crypto ICU::uc GTest::gtest_main ${ZSTD_LIBRARY})
 enable_testing()
 add_test(NAME clipboard_protocol_tests COMMAND clipboard_protocol_tests)

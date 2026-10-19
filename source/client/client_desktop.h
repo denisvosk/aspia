@@ -90,6 +90,7 @@ private:
 
     bool started_ = false;
     bool file_clipboard_supported_ = false;
+    bool rich_clipboard_supported_ = false;
     bool file_clipboard_enabled_ = false;
 
     std::shared_ptr<DesktopControlProxy> desktop_control_proxy_;

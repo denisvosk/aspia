@@ -30,6 +30,7 @@
 #include "base/desktop/screen_capturer.h"
 #include "common/desktop_session_constants.h"
 #include "common/clipboard_file_transfer.h"
+#include "common/clipboard.h"
 #include "host/desktop_session_proxy.h"
 #include "host/service_constants.h"
 #include "host/system_settings.h"
@@ -143,6 +144,7 @@ void ClientSessionDesktop::onStarted()
     add_flag(common::kFileClipboardCapability,
         sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE &&
         (allowedSessionTypes() & proto::SESSION_TYPE_FILE_TRANSFER));
+    add_flag(common::kRichClipboardCapability, sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE);
 #elif defined(OS_LINUX)
     capabilities->set_os_type(proto::DesktopCapabilities::OS_TYPE_LINUX);
 
@@ -477,10 +479,15 @@ void ClientSessionDesktop::injectClipboardEvent(const proto::ClipboardEvent& eve
         sendMessage(proto::HOST_CHANNEL_ID_SESSION, *outgoing_message_);
         return;
     }
-    if (sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE)
+    if (sessionType() == proto::SESSION_TYPE_DESKTOP_MANAGE && clipboard_enabled_)
     {
         outgoing_message_->Clear();
         outgoing_message_->mutable_clipboard_event()->CopyFrom(event);
+        if (!rich_clipboard_enabled_ && event.format_size())
+        {
+            if (event.data().empty()) return;
+            outgoing_message_->mutable_clipboard_event()->clear_format();
+        }
         sendMessage(proto::HOST_CHANNEL_ID_SESSION, *outgoing_message_);
         stat_counter_.addOutgoingClipboardEvent();
     }
@@ -617,6 +624,7 @@ void ClientSessionDesktop::readConfig(const proto::DesktopConfig& config)
     LOG(LS_INFO) << "Cursor position: " << desktop_session_config_.cursor_position;
 
     clipboard_enabled_ = (config.flags() & proto::ENABLE_CLIPBOARD) != 0;
+    rich_clipboard_enabled_ = clipboard_enabled_ && config.enable_rich_clipboard();
     if (!clipboard_enabled_) disconnectFileClipboard();
     delegate_->onClientSessionConfigured();
 }
@@ -1106,7 +1114,15 @@ void ClientSessionDesktop::readClipboard(const proto::ClipboardEvent& event)
     if (!desktop_session_proxy_) return;
     if (event.mime_type() != common::kFileClipboardMime)
     {
-        desktop_session_proxy_->injectClipboardEvent(event);
+        if (!clipboard_enabled_) return;
+        if (event.format_size() && !rich_clipboard_enabled_)
+        {
+            if (event.data().empty()) return;
+            proto::ClipboardEvent text = event;
+            text.clear_format();
+            desktop_session_proxy_->injectClipboardEvent(text);
+        }
+        else desktop_session_proxy_->injectClipboardEvent(event);
         return;
     }
 #if defined(OS_WIN)

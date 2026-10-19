@@ -1,4 +1,64 @@
-# Live clipboard investigation — preview.17 follow-up
+# Live clipboard investigation — transfer works; Explorer responsiveness follow-up
+
+## Live result, 2026-10-19
+
+After the interactive-user ownership fix (remote commit e4f8da38, Windows run
+39178214773, both architectures successful), the user confirmed files AND folders
+copy in both directions. The separate-process probe successfully obtained a
+95744-byte stream and read a byte. QueryGetData still reported DV_E_FORMATETC,
+but GetData and actual paste succeeded; that advisory query is not the blocker.
+
+Remaining behavior: pasting a folder shows no progress and blocks the destination
+Explorer window throughout copying. A large individual file shows the legacy
+Windows progress dialog with Cancel, but its destination Explorer window is also
+unresponsive/cannot be dragged. The screenshot is consistent with modal Shell
+copying; it does not establish that the whole explorer.exe process is hung.
+
+## Current change and acceptance still needed
+
+Expose IDataObjectAsyncCapability (the original IAsyncOperation IID) and enable
+it before OleSetClipboard. Explorer can negotiate background extraction. Keep
+all object/stream calls marshaled to the existing clipboard STA; do not mark the
+single-threaded protocol engine agile or add new network threads/ports. Hold the
+data object through StartOperation/EndOperation. Releasing unfinished streams
+retains the existing CANCEL behavior and keeps the offer available for repaste.
+
+Set FD_PROGRESSUI on directory descriptors too; it was previously set only on
+regular files, including in the inspected upstream 3.1.1 implementation.
+Do not invent folder byte sizes or add an unrelated Aspia progress window.
+
+Extend the Windows OLE tests to check folder/file progress flags, asynchronous
+negotiation, completion, cancellation and repaste. A separate Windows PowerShell
+5.1 process tests reading a folder child on a background STA with asynchronous
+negotiation. These check the provider contract, not Explorer UI responsiveness.
+Local Linux validation covers PowerShell parsing and embedded C# compilation.
+Actual Windows compilation/COM tests run in Actions.
+
+After the new build, use the home test PC/RDP fallback to verify BOTH directions:
+large file, folder with the same large file, and a folder with many small files.
+Check that the destination Explorer window can be moved/navigated while copying,
+that progress appears, Cancel stops the transfer, and a subsequent paste works.
+This remains a candidate fix until those live checks pass. No production rollout.
+
+The same candidate also adds negotiated rich Windows clipboard content: RTF,
+complete CF_HTML and PNG/DIB, atomically with the legacy text fallback. Optional
+ClipboardEvent field 3 holds formats; DesktopConfig field 8 enables them after
+rich_clipboard_v1 capability discovery. No existing field numbers change. Old
+peers receive text only. Rich text does not require file-transfer permission.
+It uses the existing desktop clipboard path; file streams remain in the user UI.
+Payloads have 4 MiB wire / 16 MiB decoded limits and 64 MiB decoded image bounds.
+Clipboard/ZSTD bounds, format-only changes and atomic text fallback are covered
+by platform-independent tests. Windows tests cover CF_HTML style retention, RTF
+binary payloads, embedded-picture preference, PNG/DIB and invalid input.
+Word/Word and Paint tests on two machines remain outstanding; no claim of exact
+Office fidelity or Explorer responsiveness is made from those unit tests alone.
+
+References:
+- https://learn.microsoft.com/en-us/windows/win32/api/shldisp/nn-shldisp-idataobjectasynccapability
+- https://learn.microsoft.com/en-us/windows/win32/shell/datascenarios#dragging-and-dropping-shell-objects-asynchronously
+- https://learn.microsoft.com/en-us/windows/win32/api/shlobj_core/ns-shlobj_core-filedescriptorw
+
+## Earlier preview.17 investigation
 
 User installed preview.17: Host and Console both report 2.7.1. Text copies in
 both directions. Copying a file enables Paste, but pasting creates no file.

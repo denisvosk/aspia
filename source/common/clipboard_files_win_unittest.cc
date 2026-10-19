@@ -3,6 +3,7 @@
 #include "base/crypto/random.h"
 #include <gtest/gtest.h>
 #include <ShlObj.h>
+#include <ShlDisp.h>
 #include <fstream>
 
 namespace common {
@@ -26,6 +27,7 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
 {
     ClipboardFilesWin* receiver = nullptr;
     size_t read_requests = 0;
+    size_t cancellations = 0;
     ClipboardFileTransfer sender([&](const proto::ClipboardEvent& event) {
         proto::ClipboardFile message;
         ASSERT_TRUE(parseFileClipboard(event, &message)); receiver->receive(message);
@@ -34,6 +36,7 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
         proto::ClipboardFile message;
         ASSERT_TRUE(parseFileClipboard(event, &message));
         if (message.type() == proto::ClipboardFile::READ) ++read_requests;
+        if (message.type() == proto::ClipboardFile::CANCEL) ++cancellations;
         sender.receive(message);
     });
     receiver = &windows;
@@ -51,6 +54,13 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     sender.publish(offer, {std::filesystem::canonical(directory), std::filesystem::canonical(path), std::filesystem::canonical(empty)});
     IDataObject* object = nullptr;
     ASSERT_EQ(S_OK, OleGetClipboard(&object)); ASSERT_NE(nullptr, object);
+    IDataObjectAsyncCapability* asynchronous = nullptr;
+    ASSERT_EQ(S_OK, object->QueryInterface(__uuidof(IDataObjectAsyncCapability),
+                                         reinterpret_cast<void**>(&asynchronous)));
+    BOOL active = FALSE;
+    ASSERT_EQ(S_OK, asynchronous->GetAsyncMode(&active)); EXPECT_TRUE(active);
+    ASSERT_EQ(S_OK, asynchronous->StartOperation(nullptr));
+    ASSERT_EQ(S_OK, asynchronous->InOperation(&active)); EXPECT_TRUE(active);
     FORMATETC format{static_cast<CLIPFORMAT>(RegisterClipboardFormatW(CFSTR_FILEDESCRIPTORW)), nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
     STGMEDIUM medium{};
     auto expect_rejected = [&] {
@@ -68,6 +78,9 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     auto* group = static_cast<FILEGROUPDESCRIPTORW*>(GlobalLock(medium.hGlobal));
     ASSERT_NE(nullptr, group); EXPECT_EQ(3u, group->cItems);
     EXPECT_TRUE(group->fgd[0].dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY);
+    EXPECT_TRUE(group->fgd[0].dwFlags & FD_PROGRESSUI);
+    EXPECT_FALSE(group->fgd[0].dwFlags & FD_FILESIZE);
+    EXPECT_TRUE(group->fgd[1].dwFlags & FD_PROGRESSUI);
     EXPECT_EQ(input.size(), group->fgd[1].nFileSizeLow);
     EXPECT_STREQ(L"Folder\\\u0424\u0430\u0439\u043B.dat", group->fgd[1].cFileName);
     GlobalUnlock(medium.hGlobal); ReleaseStgMedium(&medium);
@@ -92,11 +105,33 @@ TEST_F(OleClipboardTest, ExplorerFormatsStreamAndSeekRoundTrip)
     EXPECT_EQ(S_FALSE, medium.pstm->Read(prefix, sizeof(prefix), &got)); EXPECT_EQ(0u, got);
     ReleaseStgMedium(&medium);
     format.lindex = 0; expect_rejected(); // Directories have descriptors, not streams.
+    ASSERT_EQ(S_OK, asynchronous->EndOperation(S_OK, nullptr, DROPEFFECT_COPY));
+    ASSERT_EQ(S_OK, asynchronous->InOperation(&active)); EXPECT_FALSE(active);
+
+    // Cancel after a partial read, then paste again using the same clipboard.
+    const auto before_cancel = cancellations;
+    ASSERT_EQ(S_OK, asynchronous->StartOperation(nullptr));
+    format.lindex = 1;
+    ASSERT_EQ(S_OK, object->GetData(&format, &medium));
+    EXPECT_EQ(S_OK, medium.pstm->Read(prefix, sizeof(prefix), &got));
+    ReleaseStgMedium(&medium);
+    ASSERT_EQ(S_OK, asynchronous->EndOperation(E_ABORT, nullptr, DROPEFFECT_NONE));
+    EXPECT_GT(cancellations, before_cancel);
+    ASSERT_EQ(S_OK, asynchronous->InOperation(&active)); EXPECT_FALSE(active);
+    ASSERT_EQ(S_OK, asynchronous->StartOperation(nullptr));
+    ASSERT_EQ(S_OK, object->GetData(&format, &medium));
+    EXPECT_EQ(S_OK, medium.pstm->Read(prefix, sizeof(prefix), &got));
+    EXPECT_EQ(input.substr(0, sizeof(prefix)), std::string(prefix, got));
+    ReleaseStgMedium(&medium);
+    EXPECT_EQ(S_OK, asynchronous->EndOperation(S_OK, nullptr, DROPEFFECT_COPY));
+    asynchronous->Release();
     object->Release();
 }
 // Explorer consumes IDataObject through COM from another process. A same-process
 // GetData test cannot detect marshaling/access failures in that path.
-TEST_F(OleClipboardTest, SeparateProcessReadsVirtualFile)
+class OleClipboardConsumerTest : public OleClipboardTest,
+                                 public testing::WithParamInterface<bool> {};
+TEST_P(OleClipboardConsumerTest, SeparateProcessReadsVirtualFile)
 {
     ClipboardFilesWin* receiver = nullptr;
     ClipboardFileTransfer sender([&](const proto::ClipboardEvent& event) {
@@ -114,8 +149,17 @@ TEST_F(OleClipboardTest, SeparateProcessReadsVirtualFile)
     const auto path = directory / "cross-process.txt";
     { std::ofstream file(path, std::ios::binary); file << contents; }
     proto::ClipboardFile offer;
-    auto* entry = offer.add_entry(); entry->set_name("cross-process.txt"); entry->set_size(contents.size());
-    sender.publish(offer, {std::filesystem::canonical(path)});
+    std::vector<std::filesystem::path> paths;
+    if (GetParam())
+    {
+        auto* folder = offer.add_entry(); folder->set_name("Folder"); folder->set_directory(true);
+        paths.push_back(std::filesystem::canonical(directory));
+    }
+    auto* entry = offer.add_entry();
+    entry->set_name(GetParam() ? "Folder\\cross-process.txt" : "cross-process.txt");
+    entry->set_size(contents.size());
+    paths.push_back(std::filesystem::canonical(path));
+    sender.publish(offer, std::move(paths));
 
     const auto probe = std::filesystem::path(ASPIA_CLIPBOARD_PROBE_PATH);
     ASSERT_TRUE(std::filesystem::is_regular_file(probe));
@@ -126,6 +170,7 @@ TEST_F(OleClipboardTest, SeparateProcessReadsVirtualFile)
     std::wstring command = L"\"" + executable.wstring() +
         L"\" -NoProfile -STA -ExecutionPolicy Bypass -File \"" + probe.wstring() +
         L"\" -NonInteractive -ExpectedByte 65";
+    if (GetParam()) command += L" -FileIndex 1 -RequireAsync -Background";
     STARTUPINFOW startup{}; startup.cb = sizeof(startup);
     PROCESS_INFORMATION process{};
     ASSERT_TRUE(CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, FALSE,
@@ -151,6 +196,7 @@ TEST_F(OleClipboardTest, SeparateProcessReadsVirtualFile)
     ASSERT_TRUE(completed) << "Separate clipboard consumer timed out";
     EXPECT_EQ(0u, exit_code) << "Separate process could not read the expected file byte";
 }
+INSTANTIATE_TEST_SUITE_P(FileAndAsyncFolder, OleClipboardConsumerTest, testing::Bool());
 
 TEST_F(OleClipboardTest, DisconnectInvalidatesExistingOleStream)
 {

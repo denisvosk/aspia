@@ -219,6 +219,12 @@ void ClientDesktop::onClipboardEvent(const proto::ClipboardEvent& event)
     if (!out_event.has_value())
         return;
 
+    if (!rich_clipboard_supported_ && out_event->format_size())
+    {
+        if (out_event->data().empty()) return; // No image-only event to an old Host.
+        out_event->clear_format();
+    }
+
     outgoing_message_->Clear();
     outgoing_message_->mutable_clipboard_event()->CopyFrom(*out_event);
     sendMessage(proto::HOST_CHANNEL_ID_SESSION, *outgoing_message_);
@@ -249,6 +255,7 @@ void ClientDesktop::setDesktopConfig(const proto::DesktopConfig& desktop_config)
 
     outgoing_message_->Clear();
     outgoing_message_->mutable_config()->CopyFrom(desktop_config_);
+    outgoing_message_->mutable_config()->set_enable_rich_clipboard(rich_clipboard_supported_);
 
     LOG(LS_INFO) << "Send new config to host";
     sendMessage(proto::HOST_CHANNEL_ID_SESSION, *outgoing_message_);
@@ -568,10 +575,15 @@ void ClientDesktop::readCapabilities(const proto::DesktopCapabilities& capabilit
 {
     LOG(LS_INFO) << "Capabilities received";
     file_clipboard_supported_ = false;
+    rich_clipboard_supported_ = false;
 #if defined(OS_WIN)
     for (const auto& flag : capabilities.flag())
+    {
         if (flag.name() == common::kFileClipboardCapability && flag.value())
             file_clipboard_supported_ = true;
+        if (flag.name() == common::kRichClipboardCapability && flag.value())
+            rich_clipboard_supported_ = true;
+    }
 #endif
 
     // We notify the window about changes in the list of extensions and video encodings.

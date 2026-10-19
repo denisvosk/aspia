@@ -85,6 +85,7 @@ protected:
 private:
     void readClipboard(const proto::ClipboardEvent& event);
     bool clipboard_enabled_ = false;
+    bool rich_clipboard_enabled_ = false;
     bool file_clipboard_enabled_ = false;
 
     void readExtension(const proto::DesktopExtension& extension);

@@ -22,8 +22,14 @@
 #include "proto/desktop.pb.h"
 
 #include <memory>
+#include <cstddef>
 
 namespace common {
+
+inline constexpr char kRichClipboardCapability[] = "rich_clipboard_v1";
+// Leave space for the containing messages below the transport's 7 MiB limit.
+inline constexpr size_t kClipboardContentWireLimit = 4 * 1024 * 1024;
+inline constexpr size_t kClipboardContentDecodedLimit = 16 * 1024 * 1024;
 
 class Clipboard
 {
@@ -47,13 +53,16 @@ public:
 protected:
     virtual void init() = 0;
     virtual void setData(const std::string& data) = 0;
-    void onData(const std::string& data);
+    virtual void setContent(const std::string& text, const proto::ClipboardEvent&)
+    { setData(text); }
+    void onData(const std::string& data, const proto::ClipboardEvent& content = {});
     virtual void setFileData(const proto::ClipboardEvent&) {}
     void sendEvent(const proto::ClipboardEvent& event);
 
 private:
     Delegate* delegate_ = nullptr;
     std::string last_data_;
+    std::string last_formats_;
 };
 
 } // namespace common

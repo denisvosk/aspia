@@ -65,6 +65,8 @@ if (WIN32)
         clipboard_win.h
         clipboard_files_win.cc
         clipboard_files_win.h
+        clipboard_content_win.cc
+        clipboard_content_win.h
         file_enumerator_win.cc
         file_platform_util_win.cc)
 endif()
@@ -168,11 +170,11 @@ add_custom_target(build_time_updater
     COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${PROJECT_SOURCE_DIR}/source/common/ui/about_dialog.cc)
 add_dependencies(aspia_common build_time_updater)
 
-add_executable(aspia_clipboard_tests clipboard_file_transfer_unittest.cc
+add_executable(aspia_clipboard_tests clipboard_file_transfer_unittest.cc clipboard_content_unittest.cc
     ../client/input_event_filter.cc ../client/input_event_filter_unittest.cc)
-target_link_libraries(aspia_clipboard_tests PRIVATE aspia_common GTest::gtest_main)
+target_link_libraries(aspia_clipboard_tests PRIVATE aspia_common GTest::gtest_main zstd::libzstd_static)
 if (WIN32)
-    target_sources(aspia_clipboard_tests PRIVATE clipboard_files_win_unittest.cc)
+    target_sources(aspia_clipboard_tests PRIVATE clipboard_files_win_unittest.cc clipboard_content_win_unittest.cc)
     target_compile_definitions(aspia_clipboard_tests PRIVATE
         ASPIA_CLIPBOARD_PROBE_PATH="${PROJECT_SOURCE_DIR}/ops/update-server/host/Test-AspiaClipboard.ps1")
     target_link_libraries(aspia_clipboard_tests PRIVATE crypt32 iphlpapi ws2_32)

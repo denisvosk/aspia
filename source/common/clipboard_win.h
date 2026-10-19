@@ -41,6 +41,7 @@ protected:
     // Clipboard implementation.
     void init() final;
     void setData(const std::string& data) final;
+    void setContent(const std::string& text, const proto::ClipboardEvent& content) final;
     void setFileData(const proto::ClipboardEvent& event) final;
 
 private:

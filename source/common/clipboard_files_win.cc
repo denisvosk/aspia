@@ -6,6 +6,7 @@
 #include "base/win/scoped_clipboard.h"
 #include <shellapi.h>
 #include <ShlObj.h>
+#include <ShlDisp.h>
 #include <algorithm>
 #include <atomic>
 #include <cstring>
@@ -177,7 +178,7 @@ private:
     bool reading_ = false;
 };
 
-class RemoteFileObject final : public IDataObject {
+class RemoteFileObject final : public IDataObject, public IDataObjectAsyncCapability {
 public:
     RemoteFileObject(std::shared_ptr<ClipboardFileControl> control, const proto::ClipboardFile& offer)
         : control_(std::move(control)), offer_(offer)
@@ -190,11 +191,56 @@ public:
     {
         if (!out) return E_POINTER;
         *out = nullptr;
-        if (iid != IID_IUnknown && iid != IID_IDataObject) return E_NOINTERFACE;
-        *out = static_cast<IDataObject*>(this); AddRef(); return S_OK;
+        if (iid == IID_IUnknown || iid == IID_IDataObject)
+            *out = static_cast<IDataObject*>(this);
+        else if (iid == __uuidof(IDataObjectAsyncCapability))
+            *out = static_cast<IDataObjectAsyncCapability*>(this);
+        else return E_NOINTERFACE;
+        AddRef(); return S_OK;
     }
     ULONG STDMETHODCALLTYPE AddRef() override { return ++refs_; }
     ULONG STDMETHODCALLTYPE Release() override { ULONG count = --refs_; if (!count) delete this; return count; }
+    // Explorer can extract the virtual files on its worker thread instead of
+    // keeping the destination window inside a synchronous, modal paste.
+    // COM still marshals all calls to our clipboard STA; the transfer engine
+    // must not be made free-threaded. This is the original IAsyncOperation IID,
+    // renamed in newer SDKs, and does not require a newer Windows runtime.
+    HRESULT STDMETHODCALLTYPE SetAsyncMode(BOOL enabled) override
+    {
+        if (in_operation_) return E_UNEXPECTED;
+        async_mode_ = enabled != FALSE;
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE GetAsyncMode(BOOL* enabled) override
+    {
+        if (!enabled) return E_POINTER;
+        *enabled = async_mode_ ? TRUE : FALSE;
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE StartOperation(IBindCtx*) override
+    {
+        if (!async_mode_ || in_operation_) return E_UNEXPECTED;
+        if (!control_->transfer) return STG_E_REVERTED;
+        in_operation_ = true;
+        AddRef(); // Keep the object alive until the consumer calls EndOperation.
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE InOperation(BOOL* active) override
+    {
+        if (!active) return E_POINTER;
+        *active = in_operation_ ? TRUE : FALSE;
+        return S_OK;
+    }
+    HRESULT STDMETHODCALLTYPE EndOperation(HRESULT, IBindCtx*, DWORD) override
+    {
+        if (!in_operation_) return S_OK;
+        in_operation_ = false;
+        // The consumer releases each STGMEDIUM on success or cancellation;
+        // RemoteFileStream closes its reader and sends CANCEL when unfinished.
+        // Do not clear the clipboard offer: a subsequent paste must still work.
+        Release();
+        return S_OK;
+    }
     HRESULT STDMETHODCALLTYPE QueryGetData(FORMATETC* format) override
     {
         if (!format) return E_POINTER;
@@ -243,8 +289,10 @@ public:
             {
                 const auto& entry = offer_.entry(i);
                 auto& descriptor = group->fgd[i];
-                descriptor.dwFlags = FD_ATTRIBUTES | FD_UNICODE;
-                if (!entry.directory()) descriptor.dwFlags |= FD_FILESIZE | FD_PROGRESSUI;
+                // The top-level item may be a folder. Request progress for it
+                // as well as its files; do not assign a fictitious folder size.
+                descriptor.dwFlags = FD_ATTRIBUTES | FD_UNICODE | FD_PROGRESSUI;
+                if (!entry.directory()) descriptor.dwFlags |= FD_FILESIZE;
                 descriptor.dwFileAttributes = entry.directory() ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL;
                 descriptor.nFileSizeHigh = static_cast<DWORD>(entry.size() >> 32);
                 descriptor.nFileSizeLow = static_cast<DWORD>(entry.size());
@@ -281,6 +329,8 @@ private:
     std::shared_ptr<ClipboardFileControl> control_;
     proto::ClipboardFile offer_;
     CLIPFORMAT descriptor_, contents_, effect_;
+    bool async_mode_ = false;
+    bool in_operation_ = false;
 };
 
 bool appendPath(const std::filesystem::path& path, const std::filesystem::path& relative,
@@ -368,6 +418,7 @@ void ClipboardFilesWin::setOffer(const proto::ClipboardFile& offer)
         names.push_back(std::move(name));
     }
     auto* object = new RemoteFileObject(control_, offer);
+    object->SetAsyncMode(TRUE);
     if (FAILED(OleSetClipboard(object))) { object->Release(); return; }
     object_ = object;
     sequence_ = GetClipboardSequenceNumber();

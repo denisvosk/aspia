@@ -1,3 +1,5 @@
-Build x86 and x64: route file clipboard through interactive Host user process.
-Run separate-process OLE consumer and verify preview.17 same-version MSI replacement.
+Build x86 and x64: enable asynchronous Shell clipboard extraction and folder progress.
+Test async lifecycle, cancellation/repaste and a cross-process background folder consumer.
+Include negotiated RTF, full CF_HTML and PNG/DIB clipboard with plain-text fallback for 2.7.
+Test atomic multi-format content, format changes, size bounds and Windows format conversions.
 Keep protocol tests, all installer cultures, 2.7.0 upgrade and configuration checks.
