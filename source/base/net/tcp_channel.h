@@ -118,6 +118,10 @@ public:
     // Never populated from messages on this channel; direct connections leave it empty.
     const std::string& auditGrantToken() const { return audit_grant_token_; }
 
+    // Local Host bookkeeping, captured before authentication. Never read from the wire.
+    const std::string& auditRouterIdentity() const { return audit_router_identity_; }
+    void setAuditRouterIdentity(const std::string& identity) { audit_router_identity_ = identity; }
+
 protected:
     friend class TcpServer;
     friend class RelayPeer;
@@ -229,6 +233,7 @@ private:
     base::HostId host_id_ = base::kInvalidHostId;
     // No public setter: only the trusted relay-offer construction path writes this value.
     std::string audit_grant_token_;
+    std::string audit_router_identity_;
     bool is_channel_id_supported_ = false;
 
     class Handler;

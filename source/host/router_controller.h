@@ -72,6 +72,7 @@ public:
     const std::u16string& address() const { return router_info_.address; }
     uint16_t port() const { return router_info_.port; }
     const base::ByteArray& publicKey() const { return router_info_.public_key; }
+    const std::string& auditIdentity() const { return audit_identity_; }
 
 protected:
     // base::TcpChannel::Listener implementation.
@@ -101,6 +102,7 @@ private:
     std::unique_ptr<base::RelayPeerManager> peer_manager_;
     base::WaitableTimer reconnect_timer_;
     RouterInfo router_info_;
+    std::string audit_identity_;
 
     std::queue<std::string> pending_id_requests_;
     std::unique_ptr<common::SessionAuditStore> audit_outbox_;

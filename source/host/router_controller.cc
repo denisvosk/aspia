@@ -72,16 +72,18 @@ void RouterController::start(const RouterInfo& router_info, Delegate* delegate)
     LOG(LS_INFO) << "Starting host controller for router: "
                  << router_info_.address << ":" << router_info_.port;
 
+    const std::string identity = base::utf8FromUtf16(router_info.address) + ":" +
+        std::to_string(router_info.port) + ":" + base::toHex(router_info.public_key);
+    audit_identity_ = base::toHex(base::GenericHash::hash(
+        base::GenericHash::Type::BLAKE2s256, identity));
+
     std::filesystem::path audit_path;
     if (base::BasePaths::commonAppData(&audit_path))
     {
         audit_path /= "aspia";
         std::error_code error;
         std::filesystem::create_directories(audit_path, error);
-        const std::string identity = base::utf8FromUtf16(router_info.address) + ":" +
-            std::to_string(router_info.port) + ":" + base::toHex(router_info.public_key);
-        audit_path /= "host-audit-" + base::toHex(base::GenericHash::hash(
-            base::GenericHash::Type::BLAKE2s256, identity)) + ".db3";
+        audit_path /= "host-audit-" + audit_identity_ + ".db3";
         if (!error)
             audit_outbox_ = common::SessionAuditStore::open(base::utf8FromFilePath(audit_path));
         if (audit_outbox_ && !audit_outbox_->interruptOutbox())
