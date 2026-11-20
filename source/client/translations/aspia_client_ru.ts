@@ -3960,6 +3960,10 @@
         <source>Host IDs</source>
         <translation type="vanished">ID хоста</translation>
     </message>
+    <message>
+        <source>Session journal</source>
+        <translation>Журнал сеансов</translation>
+    </message>
 </context>
 <context>
     <name>client::RouterStatusDialog</name>
@@ -6433,6 +6437,230 @@
     <message>
         <source>Unknown</source>
         <translation type="obsolete">Неизвестно</translation>
+    </message>
+</context>
+
+<context>
+    <name>client::SessionAuditWidget</name>
+    <message>
+        <source>Router and Host logins are recorded separately. Router identity is confirmed only for correlated routed sessions. Times use this computer's local time zone; computer aliases come from the current address book.</source>
+        <translation>Логины Router и Host записываются отдельно. Логин Router подтверждён, когда сервер связал его с начавшимся сеансом. Время показано в часовом поясе консоли; названия компьютеров берутся из открытой адресной книги.</translation>
+    </message>
+    <message>
+        <source>From</source>
+        <translation>С</translation>
+    </message>
+    <message>
+        <source>Through</source>
+        <translation>По</translation>
+    </message>
+    <message>
+        <source>Exact login, or all users</source>
+        <translation>Логин целиком или все пользователи</translation>
+    </message>
+    <message>
+        <source>Host ID, or all computers</source>
+        <translation>ID Host или все компьютеры</translation>
+    </message>
+    <message>
+        <source>Refresh journal</source>
+        <translation>Обновить журнал</translation>
+    </message>
+    <message>
+        <source>Search loaded sessions: user, computer, group, ID or address</source>
+        <translation>Поиск по загруженным сеансам: логин, компьютер, группа, ID или адрес</translation>
+    </message>
+    <message>
+        <source>Load older sessions</source>
+        <translation>Загрузить более ранние</translation>
+    </message>
+    <message>
+        <source>Export loaded sessions...</source>
+        <translation>Выгрузить загруженные сеансы…</translation>
+    </message>
+    <message>
+        <source>The journal request timed out. Loaded records are retained; try Refresh.</source>
+        <translation>Сервер не ответил вовремя. Загруженные записи сохранены; повторите обновление.</translation>
+    </message>
+    <message>
+        <source>Started</source>
+        <translation>Начало</translation>
+    </message>
+    <message>
+        <source>Host login</source>
+        <translation>Логин Host</translation>
+    </message>
+    <message>
+        <source>Router login</source>
+        <translation>Логин Router</translation>
+    </message>
+    <message>
+        <source>Not confirmed</source>
+        <translation>Не подтверждён</translation>
+    </message>
+    <message>
+        <source>Client address (Router)</source>
+        <translation>Адрес клиента на Router</translation>
+    </message>
+    <message>
+        <source>Computer / book alias</source>
+        <translation>Компьютер / название в книге</translation>
+    </message>
+    <message>
+        <source>Host ID</source>
+        <translation>ID Host</translation>
+    </message>
+    <message>
+        <source>Session type</source>
+        <translation>Тип сеанса</translation>
+    </message>
+    <message>
+        <source>Ended</source>
+        <translation>Окончание</translation>
+    </message>
+    <message>
+        <source>Duration (h:mm:ss)</source>
+        <translation>Длительность (ч:мм:сс)</translation>
+    </message>
+    <message>
+        <source>Status</source>
+        <translation>Состояние</translation>
+    </message>
+    <message>
+        <source>Client computer (reported)</source>
+        <translation>Имя компьютера клиента</translation>
+    </message>
+    <message>
+        <source>Transport peer</source>
+        <translation>Адрес соединения</translation>
+    </message>
+    <message>
+        <source>Recorded Host name</source>
+        <translation>Исходное имя Host</translation>
+    </message>
+    <message>
+        <source>Host address</source>
+        <translation>Адрес Host</translation>
+    </message>
+    <message>
+        <source>Last server confirmation</source>
+        <translation>Последнее подтверждение серверу</translation>
+    </message>
+    <message>
+        <source>Router disconnected. Any displayed rows are the last loaded snapshot.</source>
+        <translation>Нет связи с Router. Показан последний загруженный срез.</translation>
+    </message>
+    <message>
+        <source>This Router does not advertise the session journal. Upgrade Router and Hosts to Aspia+ 2.7.2.</source>
+        <translation>Этот Router не поддерживает журнал сеансов. Обновите Router и Host до Aspia+ 2.7.2.</translation>
+    </message>
+    <message>
+        <source>Filters changed. Press Refresh journal to load this period.</source>
+        <translation>Фильтры изменены. Нажмите «Обновить журнал», чтобы загрузить выбранный период.</translation>
+    </message>
+    <message>
+        <source>The start date must not be after the end date.</source>
+        <translation>Начальная дата не должна быть позже конечной.</translation>
+    </message>
+    <message>
+        <source>Enter a valid numeric Host ID, or leave it empty.</source>
+        <translation>Введите числовой ID Host или оставьте поле пустым.</translation>
+    </message>
+    <message>
+        <source>Loading journal from Router...</source>
+        <translation>Загрузка журнала с Router…</translation>
+    </message>
+    <message>
+        <source>Router could not read the journal (error %1).</source>
+        <translation>Router не смог прочитать журнал (ошибка %1).</translation>
+    </message>
+    <message>
+        <source>Future dates — check the Host clock</source>
+        <translation>Будущие даты — проверьте часы Host</translation>
+    </message>
+    <message>
+        <source>Today</source>
+        <translation>Сегодня</translation>
+    </message>
+    <message>
+        <source>Yesterday</source>
+        <translation>Вчера</translation>
+    </message>
+    <message>
+        <source>This week</source>
+        <translation>На этой неделе</translation>
+    </message>
+    <message>
+        <source>Last week</source>
+        <translation>На прошлой неделе</translation>
+    </message>
+    <message>
+        <source>Earlier</source>
+        <translation>Ранее</translation>
+    </message>
+    <message>
+        <source>Active at last confirmation</source>
+        <translation>Активен при последнем подтверждении</translation>
+    </message>
+    <message>
+        <source>Finished</source>
+        <translation>Завершён</translation>
+    </message>
+    <message>
+        <source>End not confirmed</source>
+        <translation>Окончание не подтверждено</translation>
+    </message>
+    <message>
+        <source>Unknown</source>
+        <translation>Неизвестно</translation>
+    </message>
+    <message>
+        <source>Account authenticated by the Host. A shared login cannot identify individual people.</source>
+        <translation>Учётная запись, проверенная Host. Общий логин не позволяет различать отдельных сотрудников.</translation>
+    </message>
+    <message>
+        <source>Account authenticated by Router and bound to this accepted Host session. A shared Router login cannot identify individual people.</source>
+        <translation>Учётная запись, проверенная Router и связанная с этим принятым сеансом Host. Общий логин Router не позволяет различать отдельных сотрудников.</translation>
+    </message>
+    <message>
+        <source>No verified Router identity for this session. Direct connections, older components or an unavailable correlation record may have only a Host login.</source>
+        <translation>Логин Router для этого сеанса не подтверждён. При прямом подключении, старых компонентах или отсутствии серверной записи связи может быть известен только логин Host.</translation>
+    </message>
+    <message>
+        <source>Client address observed by Router when it authorized this routed connection.</source>
+        <translation>Адрес клиента, который Router наблюдал при разрешении этого подключения.</translation>
+    </message>
+    <message>
+        <source>The actual transport peer; for relayed sessions this may be the Relay address.</source>
+        <translation>Фактический адрес соединения; при подключении через ретранслятор здесь может быть адрес Relay.</translation>
+    </message>
+    <message>
+        <source>Shown: %1. Loaded: %2. Group counts and export cover loaded sessions only.</source>
+        <translation>Показано: %1. Загружено: %2. Счётчики групп и выгрузка относятся к загруженным сеансам.</translation>
+    </message>
+    <message>
+        <source> Narrow the period to load more than 10,000 rows.</source>
+        <translation> Уточните период: за один раз можно загрузить до 10 000 записей.</translation>
+    </message>
+    <message>
+        <source> Older sessions are available.</source>
+        <translation> Есть более ранние сеансы.</translation>
+    </message>
+    <message>
+        <source> Router disconnected; this is the last loaded snapshot.</source>
+        <translation> Связи с Router нет; показан последний загруженный срез.</translation>
+    </message>
+    <message>
+        <source>Export loaded sessions</source>
+        <translation>Выгрузка загруженных сеансов</translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv)</source>
+        <translation>Файлы CSV (*.csv)</translation>
+    </message>
+    <message>
+        <source>Export failed</source>
+        <translation>Ошибка выгрузки</translation>
     </message>
 </context>
 </TS>

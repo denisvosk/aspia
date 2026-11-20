@@ -22,6 +22,8 @@ option optimize_for = LITE_RUNTIME;
 
 import "common.proto";
 import "router_common.proto";
+import "session_audit.proto";
+import "inventory.proto";
 
 package proto;
 
@@ -79,6 +81,9 @@ message SessionList
 
     ErrorCode error_code     = 1;
     repeated Session session = 2;
+    bool session_audit_supported = 3;
+    bool host_presence_supported = 4;
+    bool inventory_supported = 5;
 }
 
 message HostSessionData
@@ -160,6 +165,9 @@ message RouterToAdmin
     SessionResult session_result = 2;
     UserList user_list           = 3;
     UserResult user_result       = 4;
+    SessionAuditList session_audit_list = 5;
+    HostPresenceList host_presence_list = 6;
+    InventoryList inventory_list = 7;
 }
 
 message AdminToRouter
@@ -169,4 +177,7 @@ message AdminToRouter
     UserListRequest user_list_request             = 3;
     UserRequest user_request                      = 4;
     PeerConnectionRequest peer_connection_request = 5;
+    SessionAuditRequest session_audit_request = 6;
+    HostPresenceRequest host_presence_request = 7;
+    InventoryRequest inventory_request = 8;
 }

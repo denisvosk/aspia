@@ -25,6 +25,7 @@
 #include "base/crypto/random.h"
 #include "base/files/base_paths.h"
 #include "base/files/file_util.h"
+#include "base/files/file_path.h"
 #include "base/net/tcp_channel.h"
 #include "router/database_factory_sqlite.h"
 #include "router/database_sqlite.h"
@@ -76,6 +77,13 @@ Server::Server(std::shared_ptr<base::TaskRunner> task_runner)
 Server::~Server()
 {
     LOG(LS_INFO) << "Dtor";
+    presence_timer_.reset();
+    if (audit_store_)
+    {
+        // A Router shutdown is loss of observation, not proof of a remote session's end.
+        audit_store_->interruptAll();
+        audit_store_->resetPresence();
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -95,6 +103,17 @@ bool Server::start()
     }
 
     Settings settings;
+
+    std::filesystem::path audit_path = DatabaseSqlite::filePath().parent_path() / "router-audit.db3";
+    audit_store_ = common::SessionAuditStore::open(base::utf8FromFilePath(audit_path));
+    if (audit_store_ && (!audit_store_->interruptAll() || !audit_store_->resetPresence()))
+        audit_store_.reset();
+    if (!audit_store_)
+        LOG(LS_ERROR) << "Session audit database unavailable; audit capability is disabled";
+    inventory_store_ = common::InventoryStore::open(base::utf8FromFilePath(
+        DatabaseSqlite::filePath().parent_path() / "router-inventory.db3"));
+    if (!inventory_store_)
+        LOG(LS_ERROR) << "Inventory database unavailable; inventory capability is disabled";
 
     base::ByteArray private_key = settings.privateKey();
     if (private_key.empty())
@@ -193,6 +212,17 @@ bool Server::start()
     server_ = std::make_unique<base::TcpServer>();
     server_->start(listen_interface, port, this);
 
+    presence_timer_ = std::make_unique<base::WaitableTimer>(
+        base::WaitableTimer::Type::REPEATED, task_runner_);
+    presence_timer_->start(std::chrono::seconds(60), [this]()
+    {
+        for (const auto& session : sessions_)
+        {
+            if (session->sessionType() == proto::ROUTER_SESSION_HOST)
+                recordHostPresence(static_cast<SessionHost*>(session.get()), true);
+        }
+    });
+
     LOG(LS_INFO) << "Server started";
     return true;
 }
@@ -201,6 +231,9 @@ bool Server::start()
 std::unique_ptr<proto::SessionList> Server::sessionList() const
 {
     std::unique_ptr<proto::SessionList> result = std::make_unique<proto::SessionList>();
+    result->set_session_audit_supported(audit_store_ != nullptr);
+    result->set_host_presence_supported(audit_store_ != nullptr);
+    result->set_inventory_supported(inventory_store_ != nullptr);
 
     for (const auto& session : sessions_)
     {
@@ -265,6 +298,8 @@ bool Server::stopSession(Session::SessionId session_id)
     {
         if (it->get()->sessionId() == session_id)
         {
+            if ((*it)->sessionType() == proto::ROUTER_SESSION_HOST)
+                recordHostPresence(static_cast<SessionHost*>(it->get()), false);
             sessions_.erase(it);
             return true;
         }
@@ -281,6 +316,7 @@ void Server::onHostSessionWithId(SessionHost* session)
         if (it->get()->sessionType() == proto::ROUTER_SESSION_HOST)
         {
             SessionHost* other_session = reinterpret_cast<SessionHost*>(it->get());
+            bool duplicate = false;
             if (other_session != session)
             {
                 for (const auto& host_id : session->hostIdList())
@@ -288,15 +324,38 @@ void Server::onHostSessionWithId(SessionHost* session)
                     if (other_session->hasHostId(host_id))
                     {
                         LOG(LS_INFO) << "Detected previous connection with ID " << host_id;
-
-                        it = sessions_.erase(it);
-                        continue;
+                        duplicate = true;
+                        break;
                     }
                 }
+            }
+            if (duplicate)
+            {
+                recordHostPresence(other_session, false);
+                it = sessions_.erase(it);
+                continue;
             }
         }
 
         ++it;
+    }
+    recordHostPresence(session, true);
+}
+
+//--------------------------------------------------------------------------------------------------
+void Server::recordHostPresence(SessionHost* session, bool online)
+{
+    if (!audit_store_)
+        return;
+    const int64_t now = static_cast<int64_t>(
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+    for (const auto host_id : session->hostIdList())
+    {
+        if (!audit_store_->observeHost(host_id, session->computerName(), session->osName(),
+                                      session->address(), now, online))
+            LOG(LS_ERROR) << "Unable to persist Host presence";
+        if (!online && !audit_store_->interruptHost(host_id))
+            LOG(LS_ERROR) << "Unable to mark Host sessions unobserved";
     }
 }
 
@@ -444,6 +503,8 @@ void Server::onSessionFinished(Session::SessionId session_id, proto::RouterSessi
     {
         if (it->get()->sessionId() == session_id)
         {
+            if ((*it)->sessionType() == proto::ROUTER_SESSION_HOST)
+                recordHostPresence(static_cast<SessionHost*>(it->get()), false);
             // Session will be destroyed after completion of the current call.
             task_runner_->deleteSoon(std::move(*it));
 

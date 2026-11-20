@@ -149,6 +149,7 @@
     </property>
     <addaction name="action_fast_connect"/>
     <addaction name="action_router_manage"/>
+    <addaction name="action_equipment_report"/>
    </widget>
    <addaction name="menu_file"/>
    <addaction name="menu_edit"/>
@@ -694,6 +695,11 @@
    </property>
    <property name="toolTip">
     <string>Export computer group to file</string>
+   </property>
+  </action>
+  <action name="action_equipment_report">
+   <property name="text">
+    <string>Equipment report...</string>
    </property>
   </action>
  </widget>

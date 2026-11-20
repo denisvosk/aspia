@@ -1,0 +1,67 @@
+// Aspia+ automatic equipment inventory. GPL v3 or later.
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+package proto;
+
+message InventoryVolume
+{
+    string path = 1;
+    string file_system = 2;
+    uint64 total_bytes = 3;
+    uint64 free_bytes = 4;
+    // Windows drive type; 3 = fixed. A volume is not a physical disk.
+    uint32 drive_type = 5;
+}
+
+message InventoryDisk
+{
+    enum Media { UNKNOWN = 0; HDD = 1; SSD = 2; }
+    uint32 device_number = 1;
+    string model = 2;
+    uint64 size_bytes = 3;
+    Media media = 4;
+    string media_evidence = 5;
+    uint32 bus_type = 6;
+}
+
+message InventorySnapshot
+{
+    fixed64 host_id = 1;
+    int64 collected_at = 2;
+    string computer_name = 3;
+    string os_name = 4;
+    string os_version = 5;
+    string os_arch = 6;
+    string cpu_model = 7;
+    uint32 cpu_packages = 8;
+    uint32 cpu_cores = 9;
+    uint32 cpu_threads = 10;
+    uint32 cpu_clock_mhz = 11;
+    uint64 ram_bytes = 12;
+    repeated InventoryVolume volumes = 13;
+    repeated InventoryDisk disks = 14;
+    string board_manufacturer = 15;
+    string board_model = 16;
+    // Set by Router, never trusted from a Host.
+    int64 received_at = 17;
+    string ram_source = 18;
+    string collection_note = 19;
+    // Fresh random ID for each actual collection. Retransmissions retain it.
+    bytes collection_id = 20;
+}
+
+message InventoryRequest
+{
+    int64 after_host_id = 1;
+    uint32 limit = 2;
+    uint64 request_id = 4;
+}
+
+message InventoryList
+{
+    enum ErrorCode { SUCCESS = 0; INVALID_REQUEST = 1; INTERNAL_ERROR = 2; }
+    ErrorCode error_code = 1;
+    repeated InventorySnapshot inventory = 2;
+    int64 next_after_host_id = 3;
+    uint64 request_id = 4;
+}

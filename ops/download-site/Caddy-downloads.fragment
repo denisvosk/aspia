@@ -1,0 +1,10 @@
+# Add INSIDE the existing HTTPS site block. Preserve its TLS and other routes.
+# Copy the generated ZIP's site directory contents to C:/Web/Aspia/downloads.
+redir /aspia /aspia/ 308
+handle_path /aspia/* {
+    root * C:/Web/Aspia/downloads
+    header X-Content-Type-Options "nosniff"
+    header Referrer-Policy "no-referrer"
+    header Cache-Control "no-store"
+    file_server
+}

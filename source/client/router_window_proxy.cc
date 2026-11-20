@@ -203,4 +203,40 @@ void RouterWindowProxy::onUserResult(std::shared_ptr<proto::UserResult> user_res
         router_window_->onUserResult(user_result);
 }
 
+void RouterWindowProxy::onSessionAuditList(std::shared_ptr<proto::SessionAuditList> list)
+{
+    if (!ui_task_runner_->belongsToCurrentThread())
+    {
+        ui_task_runner_->postTask(
+            std::bind(&RouterWindowProxy::onSessionAuditList, shared_from_this(), list));
+        return;
+    }
+    if (router_window_)
+        router_window_->onSessionAuditList(std::move(list));
+}
+
+void RouterWindowProxy::onHostPresenceList(std::shared_ptr<proto::HostPresenceList> list)
+{
+    if (!ui_task_runner_->belongsToCurrentThread())
+    {
+        ui_task_runner_->postTask(
+            std::bind(&RouterWindowProxy::onHostPresenceList, shared_from_this(), list));
+        return;
+    }
+    if (router_window_)
+        router_window_->onHostPresenceList(std::move(list));
+}
+
+void RouterWindowProxy::onInventoryList(std::shared_ptr<proto::InventoryList> list)
+{
+    if (!ui_task_runner_->belongsToCurrentThread())
+    {
+        ui_task_runner_->postTask(
+            std::bind(&RouterWindowProxy::onInventoryList, shared_from_this(), list));
+        return;
+    }
+    if (router_window_)
+        router_window_->onInventoryList(std::move(list));
+}
+
 } // namespace client

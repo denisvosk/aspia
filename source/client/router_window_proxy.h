@@ -47,6 +47,9 @@ public:
     void onSessionResult(std::shared_ptr<proto::SessionResult> session_result);
     void onUserList(std::shared_ptr<proto::UserList> user_list);
     void onUserResult(std::shared_ptr<proto::UserResult> user_result);
+    void onSessionAuditList(std::shared_ptr<proto::SessionAuditList> list);
+    void onHostPresenceList(std::shared_ptr<proto::HostPresenceList> list);
+    void onInventoryList(std::shared_ptr<proto::InventoryList> list);
 
 private:
     std::shared_ptr<base::TaskRunner> ui_task_runner_;

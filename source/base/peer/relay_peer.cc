@@ -186,6 +186,13 @@ void RelayPeer::onConnected()
                 std::unique_ptr<TcpChannel> channel =
                     std::unique_ptr<TcpChannel>(new TcpChannel(std::move(socket_)));
                 channel->setHostId(connection_offer_.host_data().host_id());
+                if (connection_offer_.peer_role() == proto::ConnectionOffer::HOST &&
+                    connection_offer_.host_data().audit_grant_token().size() == 16)
+                {
+                    // The Host received this offer over its authenticated Router channel.
+                    // A client-role offer or a peer's own protocol messages cannot set it.
+                    channel->audit_grant_token_ = connection_offer_.host_data().audit_grant_token();
+                }
 
                 delegate_->onRelayConnectionReady(std::move(channel));
             }

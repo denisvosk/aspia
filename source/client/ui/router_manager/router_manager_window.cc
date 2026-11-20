@@ -26,6 +26,7 @@
 #include "client/router_window_proxy.h"
 #include "client/ui/client_settings.h"
 #include "client/ui/router_manager/router_user_dialog.h"
+#include "client/ui/router_manager/session_audit_widget.h"
 #include "common/ui/status_dialog.h"
 #include "ui_router_manager_window.h"
 
@@ -314,6 +315,14 @@ RouterManagerWindow::RouterManagerWindow(QWidget* parent)
     LOG(LS_INFO) << "Ctor";
     ui->setupUi(this);
 
+    session_audit_ = new SessionAuditWidget(this);
+    ui->tab->addTab(session_audit_, tr("Session journal"));
+    connect(session_audit_, &SessionAuditWidget::requestPage, this,
+            [this](const proto::SessionAuditRequest& request) {
+        if (router_proxy_ && is_connected_)
+            router_proxy_->refreshSessionAudit(request);
+    });
+
     status_dialog_->setWindowFlag(Qt::WindowStaysOnTopHint);
 
     // After closing the status dialog, close the session window.
@@ -505,6 +514,7 @@ void RouterManagerWindow::onConnected(const base::Version& peer_version)
 void RouterManagerWindow::onDisconnected(base::TcpChannel::ErrorCode error_code)
 {
     is_connected_ = false;
+    session_audit_->setConnectionState(false, false);
 
     const char* message;
     switch (error_code)
@@ -629,6 +639,8 @@ void RouterManagerWindow::onAccessDenied(base::ClientAuthenticator::ErrorCode er
 //--------------------------------------------------------------------------------------------------
 void RouterManagerWindow::onSessionList(std::shared_ptr<proto::SessionList> session_list)
 {
+    session_audit_->setConnectionState(is_connected_,
+        session_list->error_code() == proto::SessionList::SUCCESS && session_list->session_audit_supported());
     QTreeWidget* tree_hosts = ui->tree_hosts;
     QTreeWidget* tree_relay = ui->tree_relay;
 
@@ -733,6 +745,18 @@ void RouterManagerWindow::onSessionList(std::shared_ptr<proto::SessionList> sess
     }
 
     afterRequest();
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterManagerWindow::setComputerAliases(const QMap<quint64, QString>& aliases)
+{
+    session_audit_->setComputerAliases(aliases);
+}
+
+void RouterManagerWindow::onSessionAuditList(std::shared_ptr<proto::SessionAuditList> list)
+{
+    if (list)
+        session_audit_->acceptList(*list);
 }
 
 //--------------------------------------------------------------------------------------------------

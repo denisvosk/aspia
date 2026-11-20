@@ -17,6 +17,10 @@
 #
 
 list(APPEND SOURCE_ROUTER
+    ../common/inventory_store.cc
+    ../common/inventory_store.h
+    ../common/session_audit_store.cc
+    ../common/session_audit_store.h
     database.h
     database_factory.h
     database_factory_sqlite.cc

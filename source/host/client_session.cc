@@ -20,6 +20,8 @@
 
 #include "base/logging.h"
 #include "base/net/tcp_channel_proxy.h"
+#include "base/crypto/random.h"
+#include "base/strings/unicode.h"
 #include "host/client_session_desktop.h"
 #include "host/client_session_file_transfer.h"
 #include "host/client_session_system_info.h"
@@ -46,6 +48,7 @@ ClientSession::ClientSession(
 //--------------------------------------------------------------------------------------------------
 ClientSession::~ClientSession()
 {
+    finishAudit(proto::SessionAuditRecord::INTERRUPTED);
     LOG(LS_INFO) << "Dtor (id=" << id_ << ")";
 }
 
@@ -95,6 +98,23 @@ void ClientSession::start(Delegate* delegate)
     delegate_ = delegate;
     DCHECK(delegate_);
 
+    if (audit_callback_ && audit_host_id_ != base::kInvalidHostId)
+    {
+        audit_started_ = std::chrono::steady_clock::now();
+        audit_record_.set_event_id(base::Random::string(16));
+        audit_record_.set_host_id(audit_host_id_);
+        audit_record_.set_audit_grant_token(channel_->auditGrantToken());
+        audit_record_.set_user_name(username_);
+        audit_record_.set_client_computer(computer_name_);
+        audit_record_.set_peer_address(base::utf8FromUtf16(channel_->peerAddress()));
+        audit_record_.set_session_type(static_cast<uint32_t>(session_type_));
+        audit_record_.set_started_at(static_cast<int64_t>(
+            std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())));
+        audit_record_.set_state(proto::SessionAuditRecord::ACTIVE);
+        audit_active_ = true;
+        audit_callback_(audit_record_);
+    }
+
     channel_->setListener(this);
     channel_->setKeepAlive(true);
     channel_->resume();
@@ -108,7 +128,24 @@ void ClientSession::stop()
     LOG(LS_INFO) << "Stop client session";
 
     state_ = State::FINISHED;
+    finishAudit(proto::SessionAuditRecord::FINISHED);
     delegate_->onClientSessionFinished();
+}
+
+//--------------------------------------------------------------------------------------------------
+void ClientSession::finishAudit(proto::SessionAuditRecord::State state)
+{
+    if (!audit_active_)
+        return;
+    audit_active_ = false;
+    audit_record_.set_state(state);
+    audit_record_.set_duration_seconds(static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(
+            std::chrono::steady_clock::now() - audit_started_).count()));
+    if (state == proto::SessionAuditRecord::FINISHED)
+        audit_record_.set_ended_at(static_cast<int64_t>(
+            std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())));
+    audit_callback_(audit_record_);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -184,6 +221,7 @@ void ClientSession::onTcpDisconnected(base::NetworkChannel::ErrorCode error_code
                   << base::NetworkChannel::errorToString(error_code);
 
     state_ = State::FINISHED;
+    finishAudit(proto::SessionAuditRecord::FINISHED);
     delegate_->onClientSessionFinished();
 }
 

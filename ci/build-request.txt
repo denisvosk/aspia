@@ -1,6 +1,7 @@
-Build x86 and x64: enable asynchronous Shell clipboard extraction and folder progress.
-Test async lifecycle, cancellation/repaste and a cross-process background folder consumer.
-Include negotiated RTF, full CF_HTML and PNG/DIB clipboard with plain-text fallback for 2.7.
-Test atomic multi-format content, format changes, size bounds and Windows format conversions.
-Keep protocol tests, all installer cultures, 2.7.0 upgrade and configuration checks.
-Use the retained preview.18 MSI and pinned hashes for same-version upgrade testing; preview.17 is no longer available.
+Aspia+ 2.7.2 audit and automatic inventory preview
+Build the consolidated Host, Router, Console and Client for x86 and x64.
+Include authenticated Router-user correlation and the installed Windows inventory worker smoke test.
+Run the independent Linux syntax/test gate while Windows dependencies are building.
+Keep session audit bound to the Router identity captured before Host authentication.
+Verify Windows protoc CRLF output without changing binary collection or validation requirements.
+Do not publish or deploy automatically.

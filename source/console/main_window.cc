@@ -31,6 +31,7 @@
 #include "console/application.h"
 #include "console/fast_connect_dialog.h"
 #include "console/import_export_util.h"
+#include "console/inventory_dialog.h"
 #include "console/mru_action.h"
 #include "console/update_settings_dialog.h"
 #include "common/ui/update_dialog.h"
@@ -124,6 +125,15 @@ MainWindow::MainWindow(const QString& file_path)
     connect(ui.action_exit, &QAction::triggered, this, &MainWindow::close);
     connect(ui.action_fast_connect, &QAction::triggered, this, &MainWindow::onFastConnect);
     connect(ui.action_router_manage, &QAction::triggered, this, &MainWindow::connectToRouter);
+    connect(ui.action_equipment_report, &QAction::triggered, this, [this]()
+    {
+        AddressBookTab* tab = currentAddressBookTab();
+        if (!tab)
+            return;
+        InventoryDialog dialog(*tab->rootComputerGroup(), tab->addressBookGuid(), tab->addressBookName(),
+                               tab->displayName(), tab->routerConfig(), this);
+        dialog.exec();
+    });
 
     connect(ui.action_desktop_manage_connect, &QAction::triggered,
             this, &MainWindow::onDesktopManageConnect);
@@ -886,6 +896,7 @@ void MainWindow::onCurrentTabChanged(int index)
         ui.action_add_computer->setEnabled(false);
         ui.action_fast_connect->setEnabled(false);
         ui.action_router_manage->setEnabled(false);
+        ui.action_equipment_report->setEnabled(false);
         ui.action_update_status->setEnabled(false);
         ui.action_import_computers->setEnabled(false);
         ui.action_export_computers->setEnabled(false);
@@ -917,6 +928,7 @@ void MainWindow::onCurrentTabChanged(int index)
 
     ui.action_fast_connect->setEnabled(true);
     ui.action_router_manage->setEnabled(tab->isRouterEnabled());
+    ui.action_equipment_report->setEnabled(true);
 
     proto::address_book::ComputerGroup* computer_group = tab->currentComputerGroup();
     if (computer_group)
@@ -1739,6 +1751,7 @@ void MainWindow::connectToRouter()
     }
 
     client::RouterManagerWindow* client_window = new client::RouterManagerWindow();
+    client_window->setComputerAliases(inventoryComputerAliases(*tab->rootComputerGroup()));
     client_window->setAttribute(Qt::WA_DeleteOnClose);
     client_window->connectToRouter(*router_config);
 }

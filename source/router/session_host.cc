@@ -84,6 +84,17 @@ void SessionHost::onSessionMessageReceived(uint8_t /* channel_id */, const base:
     {
         readResetHostId(message->reset_host_id());
     }
+    else if (message->has_session_audit_event())
+    {
+        readSessionAudit(message->session_audit_event());
+    }
+    else if (message->has_inventory_snapshot())
+    {
+        const auto& snapshot = message->inventory_snapshot();
+        if (!server().inventoryStore() || !hasHostId(snapshot.host_id()) ||
+            !server().inventoryStore()->save(snapshot))
+            LOG(LS_ERROR) << "Inventory snapshot rejected or could not be committed";
+    }
     else
     {
         LOG(LS_ERROR) << "Unhandled message from host";
@@ -108,6 +119,8 @@ void SessionHost::readHostIdRequest(const proto::HostIdRequest& host_id_request)
 
     std::unique_ptr<proto::RouterToPeer> message = std::make_unique<proto::RouterToPeer>();
     proto::HostIdResponse* host_id_response = message->mutable_host_id_response();
+    host_id_response->set_session_audit_supported(server().auditStore() != nullptr);
+    host_id_response->set_inventory_supported(server().inventoryStore() != nullptr);
     base::ByteArray key_hash;
 
     if (host_id_request.type() == proto::HostIdRequest::NEW_ID)
@@ -198,12 +211,39 @@ void SessionHost::readResetHostId(const proto::ResetHostId& reset_host_id)
         if (*it == host_id)
         {
             LOG(LS_INFO) << "Host ID " << host_id << " remove from list";
+            if (server().auditStore())
+            {
+                const int64_t now = static_cast<int64_t>(
+                    std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+                server().auditStore()->observeHost(host_id, computerName(), osName(), address(), now, false);
+                server().auditStore()->interruptHost(host_id);
+            }
             host_id_list_.erase(it);
             return;
         }
     }
 
     LOG(LS_ERROR) << "Host ID " << host_id << " NOT found in list";
+}
+
+//--------------------------------------------------------------------------------------------------
+void SessionHost::readSessionAudit(const proto::SessionAuditRecord& record)
+{
+    proto::RouterToPeer response;
+    proto::SessionAuditAck* ack = response.mutable_session_audit_ack();
+    // Bound reflected fields even for malformed records.
+    if (record.event_id().size() == 16)
+        ack->set_event_id(record.event_id());
+    ack->set_revision(record.revision());
+    const int64_t now = static_cast<int64_t>(
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+    auto* store = server().auditStore();
+    const bool accepted = store && hasHostId(record.host_id()) &&
+        store->saveReport(record, now, computerName(), address());
+    ack->set_accepted(accepted);
+    if (!accepted)
+        LOG(LS_ERROR) << "Session audit report rejected or could not be committed";
+    sendMessage(proto::ROUTER_CHANNEL_ID_SESSION, response);
 }
 
 } // namespace router

@@ -61,6 +61,7 @@ Server::~Server()
     settings_watcher_.reset();
     authenticator_manager_.reset();
     user_session_manager_.reset();
+    audit_lifetime_.reset();
     server_.reset();
 
     deleteFirewallRules();
@@ -209,6 +210,9 @@ void Server::onNewSession(base::ServerAuthenticatorManager::SessionInfo&& sessio
                       << " client: " << session_info.version.toString() << ")";
     }
 
+    // The channel's origin was captured before authentication began. Router settings may
+    // already have changed while the authenticator was waiting for the peer.
+    const std::string audit_router_identity = session_info.channel->auditRouterIdentity();
     std::unique_ptr<ClientSession> session = ClientSession::create(
         static_cast<proto::SessionType>(session_info.session_type),
         std::move(session_info.channel),
@@ -221,6 +225,23 @@ void Server::onNewSession(base::ServerAuthenticatorManager::SessionInfo&& sessio
         session->setDisplayName(session_info.display_name);
         session->setUserName(session_info.user_name);
         session->setAllowedSessionTypes(session_info.allowed_session_types);
+        if (!audit_router_identity.empty())
+        {
+            std::weak_ptr<int> lifetime = audit_lifetime_;
+            session->setAuditCallback([this, lifetime, audit_router_identity](proto::SessionAuditRecord record)
+            {
+                if (!lifetime.lock() || !router_controller_)
+                    return;
+                // Reconnect/resume may replace a controller for the same identity. A different
+                // Router must never receive this session's old Host ID or correlation grant.
+                if (router_controller_->auditIdentity() != audit_router_identity)
+                {
+                    LOG(LS_INFO) << "Skipping session audit after Router identity change";
+                    return;
+                }
+                router_controller_->recordAudit(std::move(record));
+            });
+        }
     }
     else
     {
@@ -385,6 +406,11 @@ void Server::onFileDownloaderProgress(int percentage)
 void Server::startAuthentication(std::unique_ptr<base::TcpChannel> channel)
 {
     LOG(LS_INFO) << "Start authentication";
+
+    // Set this local-only scope before ownership passes to the authenticator. An empty
+    // scope stays unaudited if a Router is enabled while authentication is in progress.
+    channel->setAuditRouterIdentity(router_controller_ ?
+        router_controller_->auditIdentity() : std::string());
 
     static const size_t kReadBufferSize = 1 * 1024 * 1024; // 1 Mb.
 

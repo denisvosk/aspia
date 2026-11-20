@@ -26,6 +26,7 @@
 #include "base/strings/strcat.h"
 #include "build/version.h"
 #include "host/integrity_check.h"
+#include "host/inventory_collector.h"
 #include "host/host_key_storage.h"
 #include "host/service.h"
 #include "host/service_constants.h"
@@ -291,6 +292,11 @@ int hostServiceMain(int argc, wchar_t* argv[])
 
     base::CommandLine::init(0, nullptr); // On Windows ignores arguments.
     base::CommandLine* command_line = base::CommandLine::forCurrentProcess();
+
+    // Internal, short-lived inventory worker. It inherits only a private output pipe and
+    // never starts or reconfigures the service. Its parent enforces a 60-second deadline.
+    if (command_line->hasSwitch(u"inventory-stdout"))
+        return integrityCheck() ? runInventoryCollectorProcess() : 1;
 
     LOG(LS_INFO) << "Command line: " << command_line->commandLineString();
     LOG(LS_INFO) << "Version: " << ASPIA_VERSION_STRING << " (arch: " << ARCH_CPU_STRING << ")";

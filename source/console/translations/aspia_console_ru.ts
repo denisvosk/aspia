@@ -831,6 +831,10 @@
         <source>Copy Computer</source>
         <translation>Копировать компьютер</translation>
     </message>
+    <message>
+        <source>Equipment report...</source>
+        <translation>Отчёт по технике…</translation>
+    </message>
 </context>
 <context>
     <name>FastConnectDialog</name>
@@ -1692,6 +1696,445 @@
         <location filename="../update_settings_dialog.cc" line="38"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
+    </message>
+</context>
+<context>
+    <name>console::InventoryDialog</name>
+    <message>
+        <source>Book name</source>
+        <translation>Имя в книге</translation>
+    </message>
+    <message>
+        <source>Group</source>
+        <translation>Группа</translation>
+    </message>
+    <message>
+        <source>Address / ID</source>
+        <translation>Адрес / ID</translation>
+    </message>
+    <message>
+        <source>System name</source>
+        <translation>Имя компьютера</translation>
+    </message>
+    <message>
+        <source>Activity evidence</source>
+        <translation>Наблюдаемая активность</translation>
+    </message>
+    <message>
+        <source>Last seen by Router</source>
+        <translation>Последнее появление на Router</translation>
+    </message>
+    <message>
+        <source>Inventory collected</source>
+        <translation>Сбор характеристик</translation>
+    </message>
+    <message>
+        <source>Received by Router</source>
+        <translation>Получено сервером</translation>
+    </message>
+    <message>
+        <source>Processor</source>
+        <translation>Процессор</translation>
+    </message>
+    <message>
+        <source>Cores</source>
+        <translation>Ядра</translation>
+    </message>
+    <message>
+        <source>Threads</source>
+        <translation>Потоки</translation>
+    </message>
+    <message>
+        <source>CPU clock, MHz</source>
+        <translation>Частота CPU, МГц</translation>
+    </message>
+    <message>
+        <source>RAM, GiB</source>
+        <translation>ОЗУ, ГиБ</translation>
+    </message>
+    <message>
+        <source>Physical disks: model, type, GiB</source>
+        <translation>Физические диски: модель, тип, ГиБ</translation>
+    </message>
+    <message>
+        <source>Logical volumes, total / free GiB</source>
+        <translation>Логические тома: всего / свободно, ГиБ</translation>
+    </message>
+    <message>
+        <source>Operating system</source>
+        <translation>Операционная система</translation>
+    </message>
+    <message>
+        <source>Review reasons</source>
+        <translation>Что требует проверки</translation>
+    </message>
+    <message>
+        <source>Collection notes</source>
+        <translation>Примечания к сбору</translation>
+    </message>
+    <message>
+        <source>Equipment report</source>
+        <translation>Отчёт по технике</translation>
+    </message>
+    <message>
+        <source>A snapshot of this address book. Router activity and hardware collection are separate observations. Missing data is not proof that a computer was retired. Times are local on screen and UTC in CSV.</source>
+        <translation>Срез всей адресной книги. Активность на Router и сбор характеристик учитываются отдельно. Отсутствие данных не означает списание компьютера. На экране время местное, в CSV — UTC.</translation>
+    </message>
+    <message>
+        <source>Refresh report</source>
+        <translation>Обновить отчёт</translation>
+    </message>
+    <message>
+        <source>Review after:</source>
+        <translation>Порог давности:</translation>
+    </message>
+    <message>
+        <source>%1 days</source>
+        <translation>%1 дней</translation>
+    </message>
+    <message>
+        <source>Find computer, group, processor...</source>
+        <translation>Найти компьютер, группу, процессор…</translation>
+    </message>
+    <message>
+        <source>Review criteria:</source>
+        <translation>Критерии проверки:</translation>
+    </message>
+    <message>
+        <source>RAM below, GiB</source>
+        <translation>ОЗУ менее, ГиБ</translation>
+    </message>
+    <message>
+        <source>Fewer CPU cores than</source>
+        <translation>Ядер CPU менее</translation>
+    </message>
+    <message>
+        <source>Volume free space below, %</source>
+        <translation>Свободно на томе менее, %</translation>
+    </message>
+    <message>
+        <source>Updated Hosts send a summary automatically at startup and daily; the Console does not have to remain open. Old Hosts and direct addresses without a Router ID can have no central inventory. SSD/HDD is reported by the storage driver; unknown types stay unknown. Physical disks and logical volumes are separate. Review flags are not replacement decisions.</source>
+        <translation>Обновлённые Host отправляют сводку автоматически при запуске и раз в сутки; консоль может быть закрыта. Для старых Host и прямых адресов без ID на Router центральной сводки может не быть. Тип SSD/HDD определяет драйвер; недоступный тип остаётся неизвестным. Физические диски и логические тома учитываются отдельно. Отметка о проверке не означает решение о замене.</translation>
+    </message>
+    <message>
+        <source>Export visible rows to CSV</source>
+        <translation>Экспорт таблицы в CSV</translation>
+    </message>
+    <message>
+        <source>Export management report</source>
+        <translation>Отчёт для руководителя</translation>
+    </message>
+    <message>
+        <source>Router did not respond within 20 seconds. Cached data is retained.</source>
+        <translation>Router не ответил за 20 секунд. Сохранённые данные не удалены.</translation>
+    </message>
+    <message>
+        <source>This book has no stable ID; inventory will remain in this window only.</source>
+        <translation>У книги нет постоянного идентификатора; данные останутся только в этом окне.</translation>
+    </message>
+    <message>
+        <source>Saved inventory could not be read. No data was discarded.</source>
+        <translation>Не удалось прочитать сохранённую сводку. Данные не удалены.</translation>
+    </message>
+    <message>
+        <source>Saved inventory is invalid or uses an unsupported format.</source>
+        <translation>Сохранённая сводка повреждена или имеет неподдерживаемый формат.</translation>
+    </message>
+    <message>
+        <source>Could not save inventory. The previous saved snapshot is unchanged.</source>
+        <translation>Не удалось сохранить сводку. Предыдущая сохранённая версия не изменена.</translation>
+    </message>
+    <message>
+        <source>No Router credentials. Configure the Router in this address book to load automatic reports.</source>
+        <translation>Нет учётных данных Router. Настройте Router в свойствах книги для получения автоматических отчётов.</translation>
+    </message>
+    <message>
+        <source>Requesting central activity history...</source>
+        <translation>Получение истории активности с сервера…</translation>
+    </message>
+    <message>
+        <source>Router could not read activity history.</source>
+        <translation>Router не смог прочитать историю активности.</translation>
+    </message>
+    <message>
+        <source>Central report exceeded the two-minute time limit; refresh to try again.</source>
+        <translation>Загрузка отчёта превысила две минуты. Нажмите «Обновить отчёт», чтобы повторить.</translation>
+    </message>
+    <message>
+        <source>Router returned invalid activity pagination.</source>
+        <translation>Router вернул некорректную последовательность страниц истории.</translation>
+    </message>
+    <message>
+        <source>This Router does not provide automatic inventory. Update Router and Hosts to use it.</source>
+        <translation>Этот Router не поддерживает автоматический сбор характеристик. Для этой функции обновите Router и Host.</translation>
+    </message>
+    <message>
+        <source>Router could not read automatic inventory. Cached summaries are retained.</source>
+        <translation>Router не смог прочитать сводки оборудования. Сохранённые сводки не удалены.</translation>
+    </message>
+    <message>
+        <source>Router returned invalid inventory pagination.</source>
+        <translation>Router вернул некорректную последовательность страниц сводки оборудования.</translation>
+    </message>
+    <message>
+        <source>Central report loaded at %1. Hosts collect it automatically; no per-computer connection is needed.</source>
+        <translation>Отчёт с сервера получен %1. Host собирают данные автоматически; подключаться к каждому компьютеру не нужно.</translation>
+    </message>
+    <message>
+        <source>Router connection ended (code %1). Cached evidence is retained.</source>
+        <translation>Соединение с Router завершилось (код %1). Сохранённые данные не удалены.</translation>
+    </message>
+    <message>
+        <source>Router timeout. Cached evidence is retained.</source>
+        <translation>Истекло время ожидания Router. Сохранённые данные не удалены.</translation>
+    </message>
+    <message>
+        <source>Incompatible Router version.</source>
+        <translation>Несовместимая версия Router.</translation>
+    </message>
+    <message>
+        <source>Router administrator access denied (code %1). Use an administrator account in the address-book Router settings.</source>
+        <translation>Нет доступа администратора Router (код %1). Укажите учётную запись администратора в настройках Router адресной книги.</translation>
+    </message>
+    <message>
+        <source>Online at last Router check</source>
+        <translation>В сети при последней проверке Router</translation>
+    </message>
+    <message>
+        <source>Router clock differs; check time</source>
+        <translation>Расхождение часов Router: проверьте время</translation>
+    </message>
+    <message>
+        <source>No Router history</source>
+        <translation>Нет истории Router</translation>
+    </message>
+    <message>
+        <source>Not observed for at least %1 days</source>
+        <translation>Не наблюдался не менее %1 дней</translation>
+    </message>
+    <message>
+        <source>Observed within %1 days</source>
+        <translation>Наблюдался за последние %1 дней</translation>
+    </message>
+    <message>
+        <source>No hardware summary</source>
+        <translation>Нет сводки оборудования</translation>
+    </message>
+    <message>
+        <source>Check Host clock or collection delay</source>
+        <translation>Проверить часы Host или задержку доставки</translation>
+    </message>
+    <message>
+        <source>Inventory is stale</source>
+        <translation>Сводка устарела</translation>
+    </message>
+    <message>
+        <source>RAM below %1 GiB</source>
+        <translation>ОЗУ менее %1 ГиБ</translation>
+    </message>
+    <message>
+        <source>RAM unknown</source>
+        <translation>Объём ОЗУ неизвестен</translation>
+    </message>
+    <message>
+        <source>Fewer than %1 CPU cores</source>
+        <translation>Менее %1 ядер CPU</translation>
+    </message>
+    <message>
+        <source>CPU core count unknown</source>
+        <translation>Количество ядер CPU неизвестно</translation>
+    </message>
+    <message>
+        <source>HDD present; review system-disk workload</source>
+        <translation>Есть HDD: проверить нагрузку на системный диск</translation>
+    </message>
+    <message>
+        <source>Disk media type is unknown</source>
+        <translation>Тип накопителя неизвестен</translation>
+    </message>
+    <message>
+        <source>%1: below %2% free</source>
+        <translation>%1: свободно менее %2%</translation>
+    </message>
+    <message>
+        <source>unknown</source>
+        <translation>нет данных</translation>
+    </message>
+    <message>
+        <source> RAM is usable memory; installed capacity was unavailable.</source>
+        <translation> ОЗУ указана по доступной системе памяти; установленный объём определить не удалось.</translation>
+    </message>
+    <message>
+        <source>Root Group</source>
+        <translation>Корневая группа</translation>
+    </message>
+    <message>
+        <source>Visible book entries: %1 / %2; unique endpoints: %3; Router observed recently: %4; not observed for %5 days: %6; unknown: %7; hardware summaries: %8.</source>
+        <translation>Записей: %1 из %2; уникальных адресов/ID: %3; наблюдались недавно: %4; не наблюдались %5 дней: %6; нет истории: %7; есть характеристики: %8.</translation>
+    </message>
+    <message>
+        <source>%1 entries / %2 endpoints; recent %3; not observed %4; unknown %5; inventoried %6; low RAM %7; few cores %8</source>
+        <translation>%1 записей / %2 адресов/ID; недавние %3; давно не видны %4; нет истории %5; со сводкой %6; мало ОЗУ %7; мало ядер %8</translation>
+    </message>
+    <message>
+        <source>HTML reports (*.html)</source>
+        <translation>Отчёты HTML (*.html)</translation>
+    </message>
+    <message>
+        <source>IT equipment inventory</source>
+        <translation>Отчёт о состоянии парка компьютеров</translation>
+    </message>
+    <message>
+        <source>Management summary and technical register</source>
+        <translation>Сводка для руководителя и реестр оборудования</translation>
+    </message>
+    <message>
+        <source>Created: %1 (UTC). Scope: all groups in the open address book.</source>
+        <translation>Сформирован: %1 (UTC). Охват: все группы открытой адресной книги.</translation>
+    </message>
+    <message>
+        <source>Address book: %1</source>
+        <translation>Адресная книга: %1</translation>
+    </message>
+    <message>
+        <source>Active filter: %1</source>
+        <translation>Применён фильтр: %1</translation>
+    </message>
+    <message>
+        <source>Unique endpoints in scope</source>
+        <translation>Уникальных адресов/ID в отчёте</translation>
+    </message>
+    <message>
+        <source>Endpoints with hardware data</source>
+        <translation>Адресов/ID с характеристиками</translation>
+    </message>
+    <message>
+        <source>Endpoints meeting review criteria</source>
+        <translation>Адресов/ID требуют проверки</translation>
+    </message>
+    <message>
+        <source>The report covers %1 book entries in %2 groups. %3 endpoints have no recent activity evidence; %4 have no activity history. %5 endpoints have missing or incomplete hardware fields. These categories are shown separately and may overlap.</source>
+        <translation>Отчёт охватывает %1 записей книги в %2 группах. У %3 адресов/ID нет недавних наблюдений; у %4 нет истории активности. Для %5 адресов/ID характеристики отсутствуют или неполны. Категории показаны отдельно и могут пересекаться.</translation>
+    </message>
+    <message>
+        <source>1. Coverage by group</source>
+        <translation>1. Охват по группам</translation>
+    </message>
+    <message>
+        <source>Book entries</source>
+        <translation>Записи книги</translation>
+    </message>
+    <message>
+        <source>Unique endpoints</source>
+        <translation>Уникальные адреса/ID</translation>
+    </message>
+    <message>
+        <source>Recent activity</source>
+        <translation>Недавняя активность</translation>
+    </message>
+    <message>
+        <source>No recent activity</source>
+        <translation>Давно не наблюдались</translation>
+    </message>
+    <message>
+        <source>Activity unknown</source>
+        <translation>Нет истории активности</translation>
+    </message>
+    <message>
+        <source>Hardware available</source>
+        <translation>Есть характеристики</translation>
+    </message>
+    <message>
+        <source>Recent hardware</source>
+        <translation>Свежие характеристики</translation>
+    </message>
+    <message>
+        <source>Entire selected scope</source>
+        <translation>Всего по выбранному охвату</translation>
+    </message>
+    <message>
+        <source>Recent activity and recent hardware use the selected %1-day window. Hardware age is measured from the first server receipt of that collection. Totals remove duplicate endpoints across groups; group subtotals may overlap.</source>
+        <translation>Для недавней активности и свежести характеристик выбран порог %1 дней. Давность сводки отсчитывается от её первого получения сервером. В итогах повторные адреса/ID между группами исключены; суммы отдельных групп могут пересекаться.</translation>
+    </message>
+    <message>
+        <source>2. Grounds for technical review</source>
+        <translation>2. Основания для технической проверки</translation>
+    </message>
+    <message>
+        <source>HDD present</source>
+        <translation>Есть HDD</translation>
+    </message>
+    <message>
+        <source>Low volume free space</source>
+        <translation>Мало свободного места</translation>
+    </message>
+    <message>
+        <source>Any review criterion</source>
+        <translation>Любой критерий проверки</translation>
+    </message>
+    <message>
+        <source>Criteria: activity within %1 days; RAM below %2 GiB; fewer than %3 CPU cores; volume free space below %4%. HDD presence is a reason to review the workload, not an automatic replacement decision.</source>
+        <translation>Критерии: активность за %1 дней; ОЗУ менее %2 ГиБ; менее %3 ядер CPU; свободно на томе менее %4%. Наличие HDD — повод проверить нагрузку, а не автоматическое основание для замены.</translation>
+    </message>
+    <message>
+        <source>Review counts use the latest available hardware even when its collection is old. Missing data is not a healthy result. Confirm the workload and current configuration before purchasing or retiring equipment.</source>
+        <translation>При подсчёте критериев используются последние доступные характеристики, в том числе устаревшие. Отсутствие данных не означает отсутствие проблем. Перед закупкой или списанием следует проверить рабочую нагрузку и текущую конфигурацию.</translation>
+    </message>
+    <message>
+        <source>3. Technical register by group</source>
+        <translation>3. Реестр оборудования по группам</translation>
+    </message>
+    <message>
+        <source>One row per address-book entry. Processor frequency is in MHz; memory and drive capacity are in GiB. Times below are UTC.</source>
+        <translation>Одна строка соответствует записи адресной книги. Частота процессора — в МГц, объём памяти и накопителей — в ГиБ. Время ниже указано в UTC.</translation>
+    </message>
+    <message>
+        <source>Workplace / identity</source>
+        <translation>Рабочее место / идентификация</translation>
+    </message>
+    <message>
+        <source>Physical storage</source>
+        <translation>Физические накопители</translation>
+    </message>
+    <message>
+        <source>Activity and collection</source>
+        <translation>Активность и сбор данных</translation>
+    </message>
+    <message>
+        <source>%1 cores / %2 threads / %3 MHz</source>
+        <translation>%1 ядер / %2 потоков / %3 МГц</translation>
+    </message>
+    <message>
+        <source>Last seen: %1</source>
+        <translation>Последнее появление: %1</translation>
+    </message>
+    <message>
+        <source>Collected: %1</source>
+        <translation>Характеристики собраны: %1</translation>
+    </message>
+    <message>
+        <source>No selected hardware criteria were detected</source>
+        <translation>Выбранные аппаратные критерии не выявлены</translation>
+    </message>
+    <message>
+        <source>Source: automatic Host summaries stored by Router. CPU frequency is the value reported by Windows, not a live performance measurement. Disk media type is reported by the storage driver; RAID, USB bridges and unsupported devices may remain unknown. The detailed CSV also includes logical volumes, receipt times and collection notes.</source>
+        <translation>Источник: автоматические сводки Host, сохранённые на Router. Частоту CPU сообщает Windows; это не измерение текущей производительности. Тип накопителя сообщает драйвер; для RAID, USB-переходников и неподдерживаемых устройств он может быть неизвестен. Подробный CSV также содержит логические тома, время получения сервером и примечания к сбору.</translation>
+    </message>
+    <message>
+        <source>Counts refer to address-book records and unique addresses / Host IDs. Several IDs can belong to one physical computer. Computers not observed recently need checking; vacation, spare equipment and retired equipment cannot be distinguished automatically. Missing hardware or activity is shown as unknown. No purchase age is inferred.</source>
+        <translation>Количество относится к записям адресной книги и уникальным адресам/ID. Одному физическому компьютеру могут соответствовать несколько ID. Давно не наблюдаемые компьютеры требуют проверки: автоматически отличить отпуск, запасную технику и списание нельзя. Отсутствующие характеристики и история активности отмечены как неизвестные. Возраст со дня покупки не предполагается.</translation>
+    </message>
+    <message>
+        <source>Could not write the complete report.</source>
+        <translation>Не удалось полностью записать отчёт.</translation>
+    </message>
+    <message>
+        <source>Export equipment report</source>
+        <translation>Экспорт отчёта по технике</translation>
+    </message>
+    <message>
+        <source>CSV files (*.csv)</source>
+        <translation>Файлы CSV (*.csv)</translation>
     </message>
 </context>
 </TS>

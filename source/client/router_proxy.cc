@@ -33,6 +33,9 @@ public:
     void connectToRouter(const std::u16string& address, uint16_t port);
     void disconnectFromRouter();
     void refreshSessionList();
+    void refreshSessionAudit(const proto::SessionAuditRequest& request);
+    void refreshHostPresence(const proto::HostPresenceRequest& request);
+    void refreshInventory(const proto::InventoryRequest& request);
     void stopSession(int64_t session_id);
     void refreshUserList();
     void addUser(const proto::User& user);
@@ -106,6 +109,44 @@ void RouterProxy::Impl::refreshSessionList()
 
     if (router_)
         router_->refreshSessionList();
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterProxy::Impl::refreshSessionAudit(const proto::SessionAuditRequest& request)
+{
+    if (!io_task_runner_->belongsToCurrentThread())
+    {
+        io_task_runner_->postTask(
+            std::bind(&Impl::refreshSessionAudit, shared_from_this(), request));
+        return;
+    }
+    if (router_)
+        router_->refreshSessionAudit(request);
+}
+
+void RouterProxy::Impl::refreshHostPresence(const proto::HostPresenceRequest& request)
+{
+    if (!io_task_runner_->belongsToCurrentThread())
+    {
+        io_task_runner_->postTask(
+            std::bind(&Impl::refreshHostPresence, shared_from_this(), request));
+        return;
+    }
+    if (router_)
+        router_->refreshHostPresence(request);
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterProxy::Impl::refreshInventory(const proto::InventoryRequest& request)
+{
+    if (!io_task_runner_->belongsToCurrentThread())
+    {
+        io_task_runner_->postTask(
+            std::bind(&Impl::refreshInventory, shared_from_this(), request));
+        return;
+    }
+    if (router_)
+        router_->refreshInventory(request);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -218,6 +259,23 @@ void RouterProxy::disconnectFromRouter()
 void RouterProxy::refreshSessionList()
 {
     impl_->refreshSessionList();
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterProxy::refreshSessionAudit(const proto::SessionAuditRequest& request)
+{
+    impl_->refreshSessionAudit(request);
+}
+
+void RouterProxy::refreshHostPresence(const proto::HostPresenceRequest& request)
+{
+    impl_->refreshHostPresence(request);
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterProxy::refreshInventory(const proto::InventoryRequest& request)
+{
+    impl_->refreshInventory(request);
 }
 
 //--------------------------------------------------------------------------------------------------
