@@ -103,6 +103,7 @@ void ClientSession::start(Delegate* delegate)
         audit_started_ = std::chrono::steady_clock::now();
         audit_record_.set_event_id(base::Random::string(16));
         audit_record_.set_host_id(audit_host_id_);
+        audit_record_.set_audit_grant_token(channel_->auditGrantToken());
         audit_record_.set_user_name(username_);
         audit_record_.set_client_computer(computer_name_);
         audit_record_.set_peer_address(base::utf8FromUtf16(channel_->peerAddress()));

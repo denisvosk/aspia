@@ -95,6 +95,17 @@ try {
     }
     Assert-InstalledPayload
     "Host $Arch preview.20 -> current ${ExpectedVersion}: service running, configuration preserved, installed binary hashes match this build." | Write-Host
+    # Exercise the new helper on real Windows after the installed candidate has
+    # passed both upgrade paths. Python uses raw binary pipes and the build's
+    # actual protoc; PowerShell never decodes/re-encodes protobuf stdout.
+    $root = Split-Path $PSScriptRoot -Parent
+    $protoc = Join-Path $root "builds/ninja-multi-vcpkg-ci/vcpkg_installed/$Arch-windows-static/tools/protobuf/protoc.exe"
+    if (!(Test-Path -LiteralPath $protoc -PathType Leaf)) { throw 'The build protoc executable is missing for the inventory smoke test.' }
+    $settingsHash = (Get-FileHash $configPath -Algorithm SHA256).Hash
+    python (Join-Path $PSScriptRoot 'test-inventory-worker.py') --service $exe --protoc $protoc --schema (Join-Path $root 'source/proto/inventory.proto')
+    if ($LASTEXITCODE) { throw 'Installed Host inventory worker smoke test failed.' }
+    if ((Get-FileHash $configPath -Algorithm SHA256).Hash -ne $settingsHash) { throw 'Inventory worker changed Host configuration.' }
+    if ((Get-Service aspia-host-service).Status -ne 'Running') { throw 'Host service stopped during the inventory smoke test.' }
 } finally {
     $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
     if ($p.ExitCode -notin 0,1605,3010) { Write-Warning "Cleanup MSI exit code: $($p.ExitCode)" }

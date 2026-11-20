@@ -49,7 +49,7 @@ $hashes | Set-Content (Join-Path $work 'SHA256SUMS.txt') -Encoding utf8
 $notes = @"
 Draft Aspia $version preview from commit $sha.
 
-Both x86 and x64 build/test jobs passed. Eight MSI packages: Console, Host, Client and Router for each architecture. Existing protocol/OLE tests, all 23 installer cultures for the desktop products (Router: its two available cultures), MSI payload extraction/hash checks, Host 2.7.0 and preview.20 upgrades, and Router 2.7.0 configuration/users/Host identity preservation gates passed. Build provenance is included per architecture. All downloaded release checksums were verified again.
+Both x86 and x64 build/test jobs passed. Eight MSI packages: Console, Host, Client and Router for each architecture. Existing protocol/OLE tests, all 23 installer cultures for the desktop products (Router: its two available cultures), MSI payload extraction/hash checks, Host 2.7.0 and preview.20 upgrades, the installed Host inventory worker/protobuf smoke test, and Router 2.7.0 configuration/users/Host identity preservation gates passed. Build provenance is included per architecture. All downloaded release checksums were verified again.
 
 Read README-preview.md. Interactive two-computer acceptance (including Word/Explorer, journal identity/timing and real inventory) remains required. The Relay stays on 2.7. The Caddy-compatible website ZIP is a prepared download site; it has not been deployed. No automatic-update feed has been changed. This release remains a draft prerelease.
 "@

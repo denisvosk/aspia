@@ -24,6 +24,10 @@ message SessionAuditRecord
     State state = 13;
     string host_address = 14;
     uint64 revision = 15;
+    bytes audit_grant_token = 16; // Host echoes an opaque Router-issued grant; never exported.
+    string router_user_name = 17; // Router output only; incoming values are ignored.
+    string router_client_address = 18; // Router output only, from authenticated operator connection.
+    bool router_identity_verified = 19; // False for direct/legacy/unresolved connections.
 }
 
 message SessionAuditAck
@@ -43,6 +47,7 @@ message SessionAuditRequest
     fixed64 host_id = 6;
     int64 before_started_at = 7;
     uint64 request_id = 8;
+    string router_user_name = 9; // Exact authenticated Router login, empty means all.
 }
 
 message SessionAuditList

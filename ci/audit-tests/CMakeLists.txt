@@ -17,7 +17,8 @@ get_filename_component(ROOT "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/proto")
 set(PROTO_SOURCES)
 set(PROTO_NAMES common desktop address_book system_info session_audit inventory
-    key_exchange router_common router_admin)
+    key_exchange router_common router_admin desktop_extensions desktop_internal
+    relay_peer router_peer router_relay task_manager text_chat)
 set(PROTO_INPUTS)
 foreach(NAME IN LISTS PROTO_NAMES)
     list(APPEND PROTO_INPUTS "${ROOT}/source/proto/${NAME}.proto")
@@ -58,7 +59,10 @@ add_library(audit_widget_syntax OBJECT
     ${ROOT}/source/console/inventory_dialog.h
     ${ROOT}/source/client/router.cc
     ${ROOT}/source/client/router_proxy.cc
-    ${ROOT}/source/client/router_window_proxy.cc)
+    ${ROOT}/source/client/router_window_proxy.cc
+    ${ROOT}/source/base/peer/relay_peer.cc
+    ${ROOT}/source/host/client_session.cc
+    ${ROOT}/source/router/session_client.cc)
 set_target_properties(audit_widget_syntax PROPERTIES AUTOMOC ON)
 target_include_directories(audit_widget_syntax PRIVATE "${ROOT}/source" "${CMAKE_CURRENT_BINARY_DIR}" "${ASIO_INCLUDE_DIR}")
 target_link_libraries(audit_widget_syntax PRIVATE Qt5::Widgets protobuf::libprotobuf-lite OpenSSL::Crypto)

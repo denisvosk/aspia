@@ -21,6 +21,8 @@ public:
     ~SessionAuditStore();
 
     static bool validReport(const proto::SessionAuditRecord& record, int64_t now);
+    bool issueGrant(uint64_t host_id, const std::string& token, const std::string& router_user_name,
+                    const std::string& client_address, int64_t now);
     bool saveReport(proto::SessionAuditRecord record, int64_t now,
                     const std::string& host_name, const std::string& host_address);
     bool auditList(const proto::SessionAuditRequest& request, proto::SessionAuditList* result);
@@ -42,6 +44,7 @@ public:
     std::vector<proto::SessionAuditRecord> pending(uint64_t host_id, size_t limit);
 
 private:
+    bool correlateGrant(uint64_t host_id, const std::string& event_id, const std::string& token);
     explicit SessionAuditStore(sqlite3* database) : db_(database) {}
     sqlite3* db_;
 };

@@ -68,6 +68,9 @@ message ConnectionRequest
 message HostOfferData
 {
     fixed64 host_id = 1; // ID to which the client will connect.
+    // Router-issued correlation, carried only to the Host over its authenticated Router channel.
+    // This entire message is removed before an offer is sent to the Client.
+    bytes audit_grant_token = 2;
 }
 
 message ConnectionOffer

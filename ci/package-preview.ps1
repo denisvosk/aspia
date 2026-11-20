@@ -81,7 +81,7 @@ $buildInfo = [ordered]@{
     source_commit = $sha
     workflow_run_id = $env:GITHUB_RUN_ID
     workflow_run_number = $env:GITHUB_RUN_NUMBER
-    validation = @('ctest', 'localized-msi-extraction-and-hashes', 'host-2.7.0-upgrade', 'host-preview20-upgrade', 'router-2.7.0-upgrade-and-data-preservation')
+    validation = @('ctest', 'localized-msi-extraction-and-hashes', 'host-2.7.0-upgrade', 'host-preview20-upgrade', 'installed-host-inventory-worker-protobuf', 'router-2.7.0-upgrade-and-data-preservation')
     interactive_acceptance = 'not_performed'
 }
 $buildInfo | ConvertTo-Json -Depth 5 | Set-Content "$out/build-info-$packageArch.json" -Encoding utf8

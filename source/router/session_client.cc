@@ -23,8 +23,11 @@
 #include "base/strings/unicode.h"
 #include "proto/relay_peer.pb.h"
 #include "router/server.h"
+#include "common/session_audit_store.h"
 #include "router/session_host.h"
 #include "router/session_relay.h"
+
+#include <chrono>
 
 namespace router {
 
@@ -125,6 +128,20 @@ void SessionClient::readConnectionRequest(const proto::ConnectionRequest& reques
 
                     proto::HostOfferData* offer_data = offer->mutable_host_data();
                     offer_data->set_host_id(request.host_id());
+
+                    // Only the Router knows the authenticated operator identity. Persist an
+                    // opaque grant before sending it to the Host, and never trust a username
+                    // supplied by either peer when the actual session is reported later.
+                    if (auto* audit_store = server().auditStore())
+                    {
+                        const std::string grant = base::Random::string(16);
+                        const int64_t now = static_cast<int64_t>(
+                            std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+                        if (audit_store->issueGrant(request.host_id(), grant, userName(), address(), now))
+                            offer_data->set_audit_grant_token(grant);
+                        else
+                            LOG(LS_ERROR) << "Unable to persist operator audit grant; identity unavailable";
+                    }
 
                     proto::RelayCredentials* offer_credentials = offer->mutable_relay();
 

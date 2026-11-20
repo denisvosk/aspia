@@ -30,6 +30,7 @@
 #include <asio/high_resolution_timer.hpp>
 
 #include <queue>
+#include <string>
 
 namespace base {
 
@@ -112,6 +113,10 @@ public:
 
     base::HostId hostId() const { return host_id_; }
     void setHostId(base::HostId host_id) { host_id_ = host_id; }
+
+    // Trusted Router metadata installed by RelayPeer from the Host's connection offer.
+    // Never populated from messages on this channel; direct connections leave it empty.
+    const std::string& auditGrantToken() const { return audit_grant_token_; }
 
 protected:
     friend class TcpServer;
@@ -222,6 +227,8 @@ private:
     ByteArray decrypt_buffer_;
 
     base::HostId host_id_ = base::kInvalidHostId;
+    // No public setter: only the trusted relay-offer construction path writes this value.
+    std::string audit_grant_token_;
     bool is_channel_id_supported_ = false;
 
     class Handler;

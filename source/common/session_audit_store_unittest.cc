@@ -2,6 +2,7 @@
 #include "common/session_audit_store.h"
 
 #include <gtest/gtest.h>
+#include <sqlite3.h>
 #include <chrono>
 #include <filesystem>
 #include <limits>
@@ -341,6 +342,264 @@ TEST_F(SessionAuditStoreTest, DeferredRejectionCannotStarveLaterRecords)
     EXPECT_EQ(pending[0].event_id(), second.event_id());
     ASSERT_TRUE(store->retryDeferred());
     EXPECT_EQ(store->pending(42, 100).size(), 2);
+}
+
+TEST_F(SessionAuditStoreTest, RouterIdentityComesOnlyFromIssuedGrant)
+{
+    const std::string grant(16, 'g');
+    ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+    auto r = record();
+    r.set_audit_grant_token(grant);
+    r.set_router_user_name("forged administrator");
+    r.set_router_client_address("forged address");
+    r.set_router_identity_verified(false);
+    ASSERT_TRUE(save(r));
+    const auto rows = list();
+    ASSERT_EQ(rows.record_size(), 1);
+    EXPECT_EQ(rows.record(0).user_name(), "ivanov"); // Host account remains a separate identity.
+    EXPECT_EQ(rows.record(0).router_user_name(), "petrova");
+    EXPECT_EQ(rows.record(0).router_client_address(), "192.0.2.90");
+    EXPECT_TRUE(rows.record(0).router_identity_verified());
+    EXPECT_TRUE(rows.record(0).audit_grant_token().empty());
+}
+
+TEST_F(SessionAuditStoreTest, HostOutboxKeepsGrantThroughAckAndCrashRecovery)
+{
+    auto r = record();
+    const std::string grant(16, 'g');
+    r.set_audit_grant_token(grant);
+    ASSERT_TRUE(store->queue(&r));
+    ASSERT_EQ(store->pending(42, 1).size(), 1);
+    EXPECT_EQ(store->pending(42, 1)[0].audit_grant_token(), grant);
+    proto::SessionAuditAck ack;
+    ack.set_event_id(r.event_id()); ack.set_revision(r.revision()); ack.set_accepted(true);
+    ASSERT_TRUE(store->acknowledge(ack));
+    ASSERT_TRUE(store->interruptOutbox());
+    auto pending = store->pending(42, 1);
+    ASSERT_EQ(pending.size(), 1);
+    EXPECT_EQ(pending[0].audit_grant_token(), grant);
+    EXPECT_EQ(pending[0].state(), proto::SessionAuditRecord::INTERRUPTED);
+}
+
+TEST_F(SessionAuditStoreTest, ClaimedRouterIdentityWithoutGrantIsDiscarded)
+{
+    auto r = record();
+    r.set_router_user_name("petrova");
+    r.set_router_client_address("192.0.2.90");
+    r.set_router_identity_verified(true);
+    ASSERT_TRUE(save(r));
+    auto rows = list();
+    EXPECT_FALSE(rows.record(0).router_identity_verified());
+    EXPECT_TRUE(rows.record(0).router_user_name().empty());
+    EXPECT_TRUE(rows.record(0).router_client_address().empty());
+}
+
+TEST_F(SessionAuditStoreTest, UnknownOrMalformedGrantKeepsHostAuditUnattributed)
+{
+    auto r = record();
+    r.set_audit_grant_token("not-a-valid-grant");
+    ASSERT_TRUE(save(r));
+    r = record('b');
+    r.set_audit_grant_token("short");
+    ASSERT_TRUE(save(r));
+    auto rows = list();
+    ASSERT_EQ(rows.record_size(), 2);
+    for (const auto& row : rows.record())
+    {
+        EXPECT_FALSE(row.router_identity_verified());
+        EXPECT_EQ(row.user_name(), "ivanov");
+    }
+}
+
+TEST_F(SessionAuditStoreTest, GrantCannotAttributeAnotherHost)
+{
+    const std::string grant(16, 'g');
+    ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+    auto wrong = record('x', 43);
+    wrong.set_audit_grant_token(grant);
+    ASSERT_TRUE(save(wrong));
+    EXPECT_FALSE(list().record(0).router_identity_verified());
+    auto correct = record('c', 42);
+    correct.set_audit_grant_token(grant);
+    ASSERT_TRUE(save(correct));
+    EXPECT_TRUE(list().record(0).router_identity_verified());
+}
+
+TEST_F(SessionAuditStoreTest, GrantCanBindOnlyOneActualEvent)
+{
+    const std::string grant(16, 'g');
+    ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+    auto first = record('a');
+    first.set_audit_grant_token(grant);
+    ASSERT_TRUE(save(first));
+    auto replay = record('b');
+    replay.set_audit_grant_token(grant);
+    ASSERT_TRUE(save(replay));
+    auto rows = list();
+    ASSERT_EQ(rows.record_size(), 2);
+    EXPECT_FALSE(rows.record(0).router_identity_verified());
+    EXPECT_TRUE(rows.record(1).router_identity_verified());
+    first.set_revision(2);
+    first.set_state(proto::SessionAuditRecord::FINISHED);
+    first.set_ended_at(kNow);
+    ASSERT_TRUE(save(first));
+    rows = list();
+    EXPECT_EQ(rows.record(1).router_user_name(), "petrova");
+}
+
+TEST_F(SessionAuditStoreTest, GrantCannotBeReassigned)
+{
+    const std::string grant(16, 'g');
+    ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+    EXPECT_FALSE(store->issueGrant(42, grant, "sidorov", "192.0.2.91", kNow + 1));
+    auto r = record();
+    r.set_audit_grant_token(grant);
+    ASSERT_TRUE(save(r));
+    EXPECT_EQ(list().record(0).router_user_name(), "petrova");
+}
+
+TEST_F(SessionAuditStoreTest, FirstVerifiedIdentitySurvivesLaterChanges)
+{
+    const std::string first_grant(16, 'a');
+    const std::string second_grant(16, 'b');
+    ASSERT_TRUE(store->issueGrant(42, first_grant, "petrova", "192.0.2.90", kNow));
+    ASSERT_TRUE(store->issueGrant(42, second_grant, "sidorov", "192.0.2.91", kNow));
+    auto r = record();
+    r.set_audit_grant_token(first_grant);
+    ASSERT_TRUE(save(r));
+    r.set_revision(2);
+    r.set_audit_grant_token(second_grant);
+    r.set_router_user_name("sidorov");
+    ASSERT_TRUE(save(r));
+    EXPECT_EQ(list().record(0).router_user_name(), "petrova");
+    r.set_revision(3);
+    r.clear_audit_grant_token();
+    ASSERT_TRUE(save(r));
+    EXPECT_EQ(list().record(0).router_user_name(), "petrova");
+}
+
+TEST_F(SessionAuditStoreTest, InvalidSessionDoesNotConsumeGrant)
+{
+    const std::string grant(16, 'g');
+    ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+    auto invalid = record('x');
+    invalid.set_audit_grant_token(grant);
+    invalid.set_user_name("");
+    EXPECT_FALSE(save(invalid));
+    auto valid = record('v');
+    valid.set_audit_grant_token(grant);
+    ASSERT_TRUE(save(valid));
+    EXPECT_TRUE(list().record(0).router_identity_verified());
+}
+
+TEST_F(SessionAuditStoreTest, RouterUserFilterHasStablePaginationAndDoesNotUseHostLogin)
+{
+    for (char id = 'a'; id <= 'e'; ++id)
+    {
+        const std::string grant(16, id);
+        ASSERT_TRUE(store->issueGrant(42, grant, id == 'c' ? "sidorov" : "petrova", "192.0.2.90", kNow));
+        auto r = record(id);
+        r.set_audit_grant_token(grant);
+        ASSERT_TRUE(save(r));
+    }
+    proto::SessionAuditRequest request;
+    request.set_router_user_name("petrova");
+    request.set_user_name("ivanov");
+    request.set_limit(2);
+    proto::SessionAuditList first;
+    ASSERT_TRUE(store->auditList(request, &first));
+    ASSERT_EQ(first.record_size(), 2);
+    EXPECT_EQ(first.record(0).event_id(), std::string(16, 'e'));
+    EXPECT_EQ(first.record(1).event_id(), std::string(16, 'd'));
+    request.set_before_id(first.next_before_id());
+    request.set_before_started_at(first.next_before_started_at());
+    proto::SessionAuditList second;
+    ASSERT_TRUE(store->auditList(request, &second));
+    ASSERT_EQ(second.record_size(), 2);
+    EXPECT_EQ(second.record(0).event_id(), std::string(16, 'b'));
+    EXPECT_EQ(second.record(1).event_id(), std::string(16, 'a'));
+    EXPECT_EQ(second.next_before_id(), 0);
+    request.clear_before_id(); request.clear_before_started_at();
+    request.set_router_user_name("' OR 1=1 --");
+    ASSERT_TRUE(store->auditList(request, &second));
+    EXPECT_EQ(second.record_size(), 0);
+}
+
+TEST(SessionAuditPersistenceTest, UnusedGrantAndVerifiedIdentitySurviveReopen)
+{
+    const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+    const std::filesystem::path path = std::filesystem::path(testing::TempDir()) /
+        ("aspia-audit-grants-" + std::to_string(suffix) + ".db3");
+    const std::string grant(16, 'g');
+    auto r = record();
+    r.set_audit_grant_token(grant);
+    {
+        auto store = SessionAuditStore::open(path.string());
+        ASSERT_TRUE(store);
+        ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+    }
+    {
+        auto store = SessionAuditStore::open(path.string());
+        ASSERT_TRUE(store);
+        ASSERT_TRUE(store->saveReport(r, kNow + 172800, "PC", "192.0.2.2"));
+    }
+    {
+        auto store = SessionAuditStore::open(path.string());
+        ASSERT_TRUE(store);
+        ASSERT_TRUE(store->interruptAll());
+        r.set_revision(2);
+        r.clear_audit_grant_token();
+        r.set_state(proto::SessionAuditRecord::FINISHED);
+        r.set_ended_at(kNow + 100);
+        ASSERT_TRUE(store->saveReport(r, kNow + 172801, "PC renamed", "192.0.2.3"));
+        proto::SessionAuditList rows;
+        ASSERT_TRUE(store->auditList(proto::SessionAuditRequest(), &rows));
+        ASSERT_EQ(rows.record_size(), 1);
+        EXPECT_TRUE(rows.record(0).router_identity_verified());
+        EXPECT_EQ(rows.record(0).router_user_name(), "petrova");
+        EXPECT_TRUE(rows.record(0).audit_grant_token().empty());
+    }
+    std::error_code error;
+    std::filesystem::remove(path, error);
+    std::filesystem::remove(path.string() + "-wal", error);
+    std::filesystem::remove(path.string() + "-shm", error);
+}
+
+TEST(SessionAuditPersistenceTest, IdentityWriteFailureRollsBackBothSessionAndGrantBinding)
+{
+    const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+    const std::filesystem::path path = std::filesystem::path(testing::TempDir()) /
+        ("aspia-audit-rollback-" + std::to_string(suffix) + ".db3");
+    {
+        auto store = SessionAuditStore::open(path.string());
+        ASSERT_TRUE(store);
+        const std::string grant(16, 'g');
+        ASSERT_TRUE(store->issueGrant(42, grant, "petrova", "192.0.2.90", kNow));
+        sqlite3* injection = nullptr;
+        ASSERT_EQ(sqlite3_open(path.string().c_str(), &injection), SQLITE_OK);
+        ASSERT_EQ(sqlite3_exec(injection,
+            "CREATE TRIGGER fail_identity BEFORE INSERT ON audit_router_identity "
+            "BEGIN SELECT RAISE(ABORT,'injected identity write failure'); END;",
+            nullptr, nullptr, nullptr), SQLITE_OK);
+        auto rejected = record('a');
+        rejected.set_audit_grant_token(grant);
+        EXPECT_FALSE(store->saveReport(rejected, kNow, "PC", "192.0.2.2"));
+        proto::SessionAuditList rows;
+        ASSERT_TRUE(store->auditList(proto::SessionAuditRequest(), &rows));
+        EXPECT_EQ(rows.record_size(), 0);
+        ASSERT_EQ(sqlite3_exec(injection, "DROP TRIGGER fail_identity", nullptr, nullptr, nullptr), SQLITE_OK);
+        EXPECT_EQ(sqlite3_close(injection), SQLITE_OK);
+        auto accepted = record('b');
+        accepted.set_audit_grant_token(grant);
+        ASSERT_TRUE(store->saveReport(accepted, kNow, "PC", "192.0.2.2"));
+        ASSERT_TRUE(store->auditList(proto::SessionAuditRequest(), &rows));
+        ASSERT_EQ(rows.record_size(), 1);
+        EXPECT_TRUE(rows.record(0).router_identity_verified());
+    }
+    std::error_code error;
+    std::filesystem::remove(path, error);
+    std::filesystem::remove(path.string() + "-wal", error);
+    std::filesystem::remove(path.string() + "-shm", error);
 }
 
 TEST(SessionAuditPersistenceTest, CommittedOutboxAndJournalSurviveReopen)

@@ -6443,8 +6443,8 @@
 <context>
     <name>client::SessionAuditWidget</name>
     <message>
-        <source>Confirmed Host logins. Times are shown in this computer's local time zone. Computer aliases come from the current address book; the recorded Host name is retained.</source>
-        <translation>Подтверждённые входы на Host. Время показано в часовом поясе этой консоли. Названия берутся из открытой адресной книги; исходное имя компьютера сохраняется в журнале.</translation>
+        <source>Router and Host logins are recorded separately. Router identity is confirmed only for correlated routed sessions. Times use this computer's local time zone; computer aliases come from the current address book.</source>
+        <translation>Логины Router и Host записываются отдельно. Логин Router подтверждён, когда сервер связал его с начавшимся сеансом. Время показано в часовом поясе консоли; названия компьютеров берутся из открытой адресной книги.</translation>
     </message>
     <message>
         <source>From</source>
@@ -6455,8 +6455,8 @@
         <translation>По</translation>
     </message>
     <message>
-        <source>Host login (exact), or all users</source>
-        <translation>Логин Host целиком или все пользователи</translation>
+        <source>Exact login, or all users</source>
+        <translation>Логин целиком или все пользователи</translation>
     </message>
     <message>
         <source>Host ID, or all computers</source>
@@ -6489,6 +6489,18 @@
     <message>
         <source>Host login</source>
         <translation>Логин Host</translation>
+    </message>
+    <message>
+        <source>Router login</source>
+        <translation>Логин Router</translation>
+    </message>
+    <message>
+        <source>Not confirmed</source>
+        <translation>Не подтверждён</translation>
+    </message>
+    <message>
+        <source>Client address (Router)</source>
+        <translation>Адрес клиента на Router</translation>
     </message>
     <message>
         <source>Computer / book alias</source>
@@ -6605,6 +6617,18 @@
     <message>
         <source>Account authenticated by the Host. A shared login cannot identify individual people.</source>
         <translation>Учётная запись, проверенная Host. Общий логин не позволяет различать отдельных сотрудников.</translation>
+    </message>
+    <message>
+        <source>Account authenticated by Router and bound to this accepted Host session. A shared Router login cannot identify individual people.</source>
+        <translation>Учётная запись, проверенная Router и связанная с этим принятым сеансом Host. Общий логин Router не позволяет различать отдельных сотрудников.</translation>
+    </message>
+    <message>
+        <source>No verified Router identity for this session. Direct connections, older components or an unavailable correlation record may have only a Host login.</source>
+        <translation>Логин Router для этого сеанса не подтверждён. При прямом подключении, старых компонентах или отсутствии серверной записи связи может быть известен только логин Host.</translation>
+    </message>
+    <message>
+        <source>Client address observed by Router when it authorized this routed connection.</source>
+        <translation>Адрес клиента, который Router наблюдал при разрешении этого подключения.</translation>
     </message>
     <message>
         <source>The actual transport peer; for relayed sessions this may be the Relay address.</source>

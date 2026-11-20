@@ -8,6 +8,7 @@
 #include <QWidget>
 #include <vector>
 
+class QComboBox;
 class QDateEdit;
 class QLabel;
 class QLineEdit;
@@ -41,6 +42,7 @@ private:
 
     QDateEdit* from_;
     QDateEdit* to_;
+    QComboBox* login_source_;
     QLineEdit* user_;
     QLineEdit* host_id_;
     QLineEdit* search_;

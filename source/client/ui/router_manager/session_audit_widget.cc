@@ -3,6 +3,7 @@
 #include "client/ui/router_manager/session_audit_helpers.h"
 #include "common/ui/session_type.h"
 
+#include <QComboBox>
 #include <QDateEdit>
 #include <QDateTime>
 #include <QFileDialog>
@@ -22,6 +23,24 @@
 namespace client {
 namespace {
 constexpr size_t kMaxLoadedRecords = 10000;
+enum Column
+{
+    STARTED = 0,
+    ROUTER_LOGIN,
+    HOST_LOGIN,
+    COMPUTER,
+    HOST_ID,
+    SESSION_TYPE,
+    ENDED,
+    DURATION,
+    STATUS,
+    CLIENT_COMPUTER,
+    ROUTER_CLIENT_ADDRESS,
+    TRANSPORT_PEER,
+    RECORDED_HOST_NAME,
+    HOST_ADDRESS,
+    LAST_CONFIRMATION
+};
 QString timeText(qint64 timestamp)
 {
     return timestamp > 0 ? QDateTime::fromSecsSinceEpoch(timestamp).toLocalTime()
@@ -32,8 +51,8 @@ QString timeText(qint64 timestamp)
 SessionAuditWidget::SessionAuditWidget(QWidget* parent) : QWidget(parent)
 {
     auto* layout = new QVBoxLayout(this);
-    auto* note = new QLabel(tr("Confirmed Host logins. Times are shown in this computer's local time zone. "
-                              "Computer aliases come from the current address book; the recorded Host name is retained."), this);
+    auto* note = new QLabel(tr("Router and Host logins are recorded separately. Router identity is confirmed only for correlated routed sessions. "
+                              "Times use this computer's local time zone; computer aliases come from the current address book."), this);
     note->setWordWrap(true);
     layout->addWidget(note);
 
@@ -49,8 +68,13 @@ SessionAuditWidget::SessionAuditWidget(QWidget* parent) : QWidget(parent)
     filters->addWidget(from_);
     filters->addWidget(new QLabel(tr("Through"), this));
     filters->addWidget(to_);
+    login_source_ = new QComboBox(this);
+    login_source_->setObjectName(QStringLiteral("auditLoginSource"));
+    login_source_->addItem(tr("Router login"));
+    login_source_->addItem(tr("Host login"));
+    filters->addWidget(login_source_);
     user_ = new QLineEdit(this);
-    user_->setPlaceholderText(tr("Host login (exact), or all users"));
+    user_->setPlaceholderText(tr("Exact login, or all users"));
     user_->setMaxLength(256);
     host_id_ = new QLineEdit(this);
     host_id_->setPlaceholderText(tr("Host ID, or all computers"));
@@ -72,9 +96,10 @@ SessionAuditWidget::SessionAuditWidget(QWidget* parent) : QWidget(parent)
     tree_->setUniformRowHeights(true);
     tree_->header()->setStretchLastSection(false);
     tree_->header()->setSectionResizeMode(QHeaderView::Interactive);
-    tree_->setColumnWidth(0, 200);
-    tree_->setColumnWidth(1, 145);
-    tree_->setColumnWidth(2, 240);
+    tree_->setColumnWidth(STARTED, 200);
+    tree_->setColumnWidth(ROUTER_LOGIN, 145);
+    tree_->setColumnWidth(HOST_LOGIN, 145);
+    tree_->setColumnWidth(COMPUTER, 240);
     layout->addWidget(tree_, 1);
     auto* buttons = new QHBoxLayout();
     status_ = new QLabel(this);
@@ -100,6 +125,8 @@ SessionAuditWidget::SessionAuditWidget(QWidget* parent) : QWidget(parent)
     connect(export_, &QPushButton::clicked, this, &SessionAuditWidget::exportCsv);
     connect(search_, &QLineEdit::textChanged, this, [this]() { rebuild(); });
     connect(user_, &QLineEdit::textChanged, this, [this]() { filtersChanged(); });
+    connect(login_source_, qOverload<int>(&QComboBox::currentIndexChanged), this,
+        [this](int) { filtersChanged(); });
     connect(host_id_, &QLineEdit::textChanged, this, [this]() { filtersChanged(); });
     connect(from_, &QDateEdit::dateChanged, this, [this]() { filtersChanged(); });
     connect(to_, &QDateEdit::dateChanged, this, [this]() { filtersChanged(); });
@@ -108,9 +135,9 @@ SessionAuditWidget::SessionAuditWidget(QWidget* parent) : QWidget(parent)
 
 QStringList SessionAuditWidget::headings() const
 {
-    return {tr("Started"), tr("Host login"), tr("Computer / book alias"), tr("Host ID"),
+    return {tr("Started"), tr("Router login"), tr("Host login"), tr("Computer / book alias"), tr("Host ID"),
             tr("Session type"), tr("Ended"), tr("Duration (h:mm:ss)"), tr("Status"),
-            tr("Client computer (reported)"), tr("Transport peer"), tr("Recorded Host name"),
+            tr("Client computer (reported)"), tr("Client address (Router)"), tr("Transport peer"), tr("Recorded Host name"),
             tr("Host address"), tr("Last server confirmation")};
 }
 
@@ -177,7 +204,10 @@ void SessionAuditWidget::request(bool next_page)
         filter_.set_from_time(QDateTime(from_->date(), QTime(0, 0), Qt::LocalTime).toSecsSinceEpoch());
         filter_.set_to_time(QDateTime(to_->date().addDays(1), QTime(0, 0), Qt::LocalTime).toSecsSinceEpoch());
         filter_.set_host_id(id);
-        filter_.set_user_name(user_->text().trimmed().toStdString());
+        if (login_source_->currentIndex() == 0)
+            filter_.set_router_user_name(user_->text().trimmed().toStdString());
+        else
+            filter_.set_user_name(user_->text().trimmed().toStdString());
         // Keep the previous successful snapshot until its replacement arrives.
         // A filter edit already clears rows that belonged to a different scope.
     }
@@ -258,11 +288,16 @@ QStringList SessionAuditWidget::recordCells(const proto::SessionAuditRecord& rec
             break;
         default: state = tr("Unknown"); break;
     }
-    return {timeText(record.started_at()), QString::fromStdString(record.user_name()),
+    const bool router_verified = record.router_identity_verified() && !record.router_user_name().empty();
+    return {timeText(record.started_at()),
+        router_verified ? QString::fromStdString(record.router_user_name()) : tr("Not confirmed"),
+        QString::fromStdString(record.user_name()),
         alias.isEmpty() ? name : alias, QString::number(record.host_id()),
         common::sessionTypeToLocalizedString(static_cast<proto::SessionType>(record.session_type())),
         timeText(record.ended_at()), duration, state,
-        QString::fromStdString(record.client_computer()), QString::fromStdString(record.peer_address()),
+        QString::fromStdString(record.client_computer()),
+        router_verified ? QString::fromStdString(record.router_client_address()) : QString(),
+        QString::fromStdString(record.peer_address()),
         name, QString::fromStdString(record.host_address()), timeText(record.last_seen())};
 }
 
@@ -307,8 +342,14 @@ void SessionAuditWidget::rebuild()
             days.insert(date, day);
         }
         auto* row = new QTreeWidgetItem(day, cells);
-        row->setToolTip(1, tr("Account authenticated by the Host. A shared login cannot identify individual people."));
-        row->setToolTip(9, tr("The actual transport peer; for relayed sessions this may be the Relay address."));
+        for (int column = 0; column < cells.size(); ++column)
+            row->setToolTip(column, cells[column]);
+        row->setToolTip(ROUTER_LOGIN, record.router_identity_verified()
+            ? tr("Account authenticated by Router and bound to this accepted Host session. A shared Router login cannot identify individual people.")
+            : tr("No verified Router identity for this session. Direct connections, older components or an unavailable correlation record may have only a Host login."));
+        row->setToolTip(HOST_LOGIN, tr("Account authenticated by the Host. A shared login cannot identify individual people."));
+        row->setToolTip(ROUTER_CLIENT_ADDRESS, tr("Client address observed by Router when it authorized this routed connection."));
+        row->setToolTip(TRANSPORT_PEER, tr("The actual transport peer; for relayed sessions this may be the Relay address."));
         ++shown;
     }
     for (auto it = days.begin(); it != days.end(); ++it)
@@ -356,7 +397,7 @@ void SessionAuditWidget::exportCsv()
     };
     QByteArray output("\xef\xbb\xbf");
     QStringList csv_headings = headings();
-    for (int column : {0, 5, 12})
+    for (int column : {STARTED, ENDED, LAST_CONFIRMATION})
         csv_headings[column] += QStringLiteral(" (UTC)");
     output += encode(csv_headings);
     for (const auto& record : records_)
@@ -368,9 +409,9 @@ void SessionAuditWidget::exportCsv()
             return seconds > 0 ? QDateTime::fromSecsSinceEpoch(seconds, Qt::UTC).toString(Qt::ISODate)
                                : QString();
         };
-        cells[0] = utc_time(record.started_at());
-        cells[5] = utc_time(record.ended_at());
-        cells[12] = utc_time(record.last_seen());
+        cells[STARTED] = utc_time(record.started_at());
+        cells[ENDED] = utc_time(record.ended_at());
+        cells[LAST_CONFIRMATION] = utc_time(record.last_seen());
         output += encode(cells);
     }
     if (file.write(output) != output.size() || !file.commit())
