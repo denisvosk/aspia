@@ -195,6 +195,10 @@ list(APPEND SOURCE_CLIENT_CORE_UI_FILE_TRANSFER
     ui/file_transfer/qt_file_manager_window.ui)
 
 list(APPEND SOURCE_CLIENT_CORE_UI_ROUTER_MANAGER
+    ui/router_manager/session_audit_widget.cc
+    ui/router_manager/session_audit_widget.h
+    ui/router_manager/session_audit_helpers.cc
+    ui/router_manager/session_audit_helpers.h
     ui/router_manager/router_manager_window.cc
     ui/router_manager/router_manager_window.h
     ui/router_manager/router_manager_window.ui
@@ -373,3 +377,8 @@ if (APPLE)
     set_target_properties(aspia_client PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${aspia_client_PLIST})
     set_target_properties(aspia_client PROPERTIES MACOSX_BUNDLE_ICONFILE ${aspia_client_ICON})
 endif()
+
+add_executable(aspia_audit_ui_tests session_audit_helpers_unittest.cc
+    ui/router_manager/session_audit_helpers.cc)
+target_link_libraries(aspia_audit_ui_tests PRIVATE Qt5::Core GTest::gtest_main)
+add_test(NAME aspia_audit_ui_tests COMMAND aspia_audit_ui_tests)

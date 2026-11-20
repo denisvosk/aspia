@@ -1,0 +1,83 @@
+// Aspia+ session audit extensions. Copyright (C) 2026 Aspia+ contributors.
+// Distributed under the GNU GPL v3 or later; see LICENSE.md.
+syntax = "proto3";
+option optimize_for = LITE_RUNTIME;
+package proto;
+
+// Reported by the Host only after authentication and local approval.
+// Display names and peer computer names are not authenticated identities.
+message SessionAuditRecord
+{
+    enum State { UNKNOWN = 0; ACTIVE = 1; FINISHED = 2; INTERRUPTED = 3; }
+    int64 id = 1;
+    bytes event_id = 2;
+    fixed64 host_id = 3;
+    string host_name = 4;
+    string user_name = 5;
+    string client_computer = 6;
+    string peer_address = 7;
+    uint32 session_type = 8;
+    int64 started_at = 9;
+    int64 ended_at = 10; // Zero if the exact end was not observed.
+    uint64 duration_seconds = 11; // Monotonic elapsed time, never inferred from wall-clock subtraction.
+    int64 last_seen = 12; // Router receipt time, not an exact disconnect time.
+    State state = 13;
+    string host_address = 14;
+    uint64 revision = 15;
+}
+
+message SessionAuditAck
+{
+    bytes event_id = 1;
+    uint64 revision = 2;
+    bool accepted = 3; // Acknowledged only after durable commit.
+}
+
+message SessionAuditRequest
+{
+    int64 from_time = 1; // Inclusive UTC seconds. Zero means no lower bound.
+    int64 to_time = 2; // Exclusive UTC seconds. Zero means no upper bound.
+    int64 before_id = 3; // Keyset pagination by (started_at, id), both descending.
+    uint32 limit = 4; // Default 200, maximum 500.
+    string user_name = 5; // Exact authenticated Host login, empty means all.
+    fixed64 host_id = 6;
+    int64 before_started_at = 7;
+    uint64 request_id = 8;
+}
+
+message SessionAuditList
+{
+    enum ErrorCode { SUCCESS = 0; INVALID_REQUEST = 1; INTERNAL_ERROR = 2; }
+    ErrorCode error_code = 1;
+    repeated SessionAuditRecord record = 2;
+    int64 next_before_id = 3;
+    uint64 request_id = 4;
+    int64 next_before_started_at = 5;
+}
+
+message HostPresence
+{
+    fixed64 host_id = 1;
+    string computer_name = 2;
+    string os_name = 3;
+    string address = 4;
+    int64 first_seen = 5;
+    int64 last_seen = 6;
+    bool online = 7;
+}
+
+message HostPresenceRequest
+{
+    int64 after_host_id = 1;
+    uint32 limit = 2; // Default 200, maximum 500.
+    uint64 request_id = 3;
+}
+
+message HostPresenceList
+{
+    enum ErrorCode { SUCCESS = 0; INVALID_REQUEST = 1; INTERNAL_ERROR = 2; }
+    ErrorCode error_code = 1;
+    repeated HostPresence host = 2;
+    int64 next_after_host_id = 3;
+    uint64 request_id = 4;
+}

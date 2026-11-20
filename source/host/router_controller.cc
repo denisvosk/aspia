@@ -20,6 +20,9 @@
 
 #include "base/logging.h"
 #include "base/task_runner.h"
+#include "base/crypto/generic_hash.h"
+#include "base/files/base_paths.h"
+#include "base/files/file_path.h"
 #include "base/peer/client_authenticator.h"
 #include "base/strings/unicode.h"
 #include "host/host_key_storage.h"
@@ -37,7 +40,10 @@ const std::chrono::seconds kReconnectTimeout{ 10 };
 RouterController::RouterController(std::shared_ptr<base::TaskRunner> task_runner)
     : task_runner_(task_runner),
       peer_manager_(std::make_unique<base::RelayPeerManager>(task_runner, this)),
-      reconnect_timer_(base::WaitableTimer::Type::SINGLE_SHOT, task_runner)
+      reconnect_timer_(base::WaitableTimer::Type::SINGLE_SHOT, task_runner),
+      audit_timer_(base::WaitableTimer::Type::REPEATED, task_runner),
+      inventory_collector_(std::make_unique<InventoryCollector>(task_runner)),
+      inventory_timer_(base::WaitableTimer::Type::REPEATED, task_runner)
 {
     LOG(LS_INFO) << "Ctor";
 }
@@ -45,6 +51,9 @@ RouterController::RouterController(std::shared_ptr<base::TaskRunner> task_runner
 //--------------------------------------------------------------------------------------------------
 RouterController::~RouterController()
 {
+    inventory_timer_.stop();
+    inventory_collector_.reset();
+    audit_timer_.stop();
     LOG(LS_INFO) << "Dtor";
 }
 
@@ -62,6 +71,26 @@ void RouterController::start(const RouterInfo& router_info, Delegate* delegate)
 
     LOG(LS_INFO) << "Starting host controller for router: "
                  << router_info_.address << ":" << router_info_.port;
+
+    std::filesystem::path audit_path;
+    if (base::BasePaths::commonAppData(&audit_path))
+    {
+        audit_path /= "aspia";
+        std::error_code error;
+        std::filesystem::create_directories(audit_path, error);
+        const std::string identity = base::utf8FromUtf16(router_info.address) + ":" +
+            std::to_string(router_info.port) + ":" + base::toHex(router_info.public_key);
+        audit_path /= "host-audit-" + base::toHex(base::GenericHash::hash(
+            base::GenericHash::Type::BLAKE2s256, identity)) + ".db3";
+        if (!error)
+            audit_outbox_ = common::SessionAuditStore::open(base::utf8FromFilePath(audit_path));
+        if (audit_outbox_ && !audit_outbox_->interruptOutbox())
+            audit_outbox_.reset();
+    }
+    if (!audit_outbox_)
+        LOG(LS_ERROR) << "Host session audit outbox unavailable";
+    audit_timer_.start(std::chrono::seconds(30), [this]() { checkpointAudit(); });
+    inventory_timer_.start(std::chrono::hours(1), [this]() { refreshInventory(); });
 
     connectToRouter();
 }
@@ -105,6 +134,7 @@ void RouterController::hostIdRequest(const std::string& session_name)
 //--------------------------------------------------------------------------------------------------
 void RouterController::resetHostId(base::HostId host_id)
 {
+    audit_host_ids_.erase(host_id);
     LOG(LS_INFO) << "ResetHostId request: " << host_id;
 
     if (!channel_ || !channel_->isConnected())
@@ -171,6 +201,10 @@ void RouterController::onTcpConnected()
 //--------------------------------------------------------------------------------------------------
 void RouterController::onTcpDisconnected(base::NetworkChannel::ErrorCode error_code)
 {
+    audit_supported_ = false;
+    inventory_supported_ = false;
+    audit_host_ids_.clear();
+    audit_in_flight_.clear();
     LOG(LS_INFO) << "Connection to the router is lost ("
                  << base::NetworkChannel::errorToString(error_code) << ")";
 
@@ -246,6 +280,11 @@ void RouterController::onTcpMessageReceived(uint8_t /* channel_id */, const base
 
         delegate_->onHostIdAssigned(session_name, host_id);
         pending_id_requests_.pop();
+        audit_supported_ = host_id_response.session_audit_supported();
+        inventory_supported_ = host_id_response.inventory_supported();
+        audit_host_ids_.insert(host_id);
+        flushAudit();
+        refreshInventory();
     }
     else if (in_message.has_connection_offer())
     {
@@ -261,6 +300,27 @@ void RouterController::onTcpMessageReceived(uint8_t /* channel_id */, const base
         else
         {
             LOG(LS_ERROR) << "Invalid connection offer";
+        }
+    }
+    else if (in_message.has_session_audit_ack())
+    {
+        const auto& ack = in_message.session_audit_ack();
+        auto in_flight = audit_in_flight_.find(ack.event_id());
+        if (in_flight != audit_in_flight_.end() && in_flight->second == ack.revision())
+            audit_in_flight_.erase(in_flight);
+        if (audit_outbox_ && ack.accepted())
+        {
+            if (!audit_outbox_->acknowledge(ack))
+                LOG(LS_ERROR) << "Unable to persist session audit acknowledgement";
+            else
+                flushAudit();
+        }
+        else
+        {
+            LOG(LS_ERROR) << "Router did not acknowledge session audit; retained for retry";
+            // A malformed or temporarily rejected entry must not starve subsequent entries.
+            if (audit_outbox_ && audit_outbox_->defer(ack))
+                flushAudit();
         }
     }
     else
@@ -294,6 +354,10 @@ void RouterController::onNewPeerConnected(std::unique_ptr<base::TcpChannel> chan
 //--------------------------------------------------------------------------------------------------
 void RouterController::connectToRouter()
 {
+    audit_supported_ = false;
+    inventory_supported_ = false;
+    audit_host_ids_.clear();
+    audit_in_flight_.clear();
     LOG(LS_INFO) << "Connecting to router...";
 
     routerStateChanged(proto::internal::RouterState::CONNECTING);
@@ -350,6 +414,128 @@ const char* RouterController::routerStateToString(proto::internal::RouterState::
 
         default:
             return "UNKNOWN";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void RouterController::recordAudit(proto::SessionAuditRecord record)
+{
+    if (!audit_outbox_)
+    {
+        LOG(LS_ERROR) << "Unable to save session audit: outbox unavailable";
+        return;
+    }
+    const std::string event_id = record.event_id();
+    const auto checkpoint = std::chrono::steady_clock::now();
+    const bool saved = audit_outbox_->queue(&record);
+    if (!saved)
+        LOG(LS_ERROR) << "Unable to commit session audit; retaining in memory for retry";
+    if (record.state() == proto::SessionAuditRecord::ACTIVE || !saved)
+        active_audits_[event_id] = ActiveAudit{std::move(record), checkpoint};
+    else
+        active_audits_.erase(event_id);
+    flushAudit();
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterController::checkpointAudit()
+{
+    if (!audit_outbox_)
+        return;
+    // Retry a lost ACK, with at most 16 records in flight. The Router de-duplicates revisions.
+    audit_in_flight_.clear();
+    const auto now = std::chrono::steady_clock::now();
+    if (!audit_outbox_->retryDeferred())
+        LOG(LS_ERROR) << "Unable to schedule deferred audit records for retry";
+    for (auto it = active_audits_.begin(); it != active_audits_.end();)
+    {
+        proto::SessionAuditRecord record = it->second.record;
+        if (record.state() == proto::SessionAuditRecord::ACTIVE)
+        {
+            const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                now - it->second.checkpoint).count();
+            record.set_duration_seconds(record.duration_seconds() + static_cast<uint64_t>(elapsed));
+        }
+        if (!audit_outbox_->queue(&record))
+        {
+            LOG(LS_ERROR) << "Unable to persist session audit checkpoint";
+            ++it;
+            continue;
+        }
+        if (record.state() != proto::SessionAuditRecord::ACTIVE)
+        {
+            it = active_audits_.erase(it);
+            continue;
+        }
+        it->second = ActiveAudit{std::move(record), now};
+        ++it;
+    }
+    flushAudit();
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterController::flushAudit()
+{
+    if (!audit_outbox_ || !audit_supported_ || !channel_ || !channel_->isConnected())
+        return;
+    for (const auto host_id : audit_host_ids_)
+    {
+        const auto records = audit_outbox_->pending(host_id, 32);
+        for (const auto& record : records)
+        {
+            if (audit_in_flight_.size() >= 16)
+                return;
+            if (audit_in_flight_.count(record.event_id()))
+                continue;
+            proto::PeerToRouter message;
+            *message.mutable_session_audit_event() = record;
+            audit_in_flight_[record.event_id()] = record.revision();
+            channel_->send(proto::ROUTER_CHANNEL_ID_SESSION, base::serialize(message));
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+void RouterController::refreshInventory()
+{
+    if (!inventory_supported_ || audit_host_ids_.empty() || !channel_ || !channel_->isConnected())
+        return;
+    const auto now = std::chrono::steady_clock::now();
+    if (!cached_inventory_ || now - inventory_collected_at_ >= std::chrono::hours(24))
+    {
+        inventory_collector_->collect(*audit_host_ids_.begin(), [this](proto::InventorySnapshot snapshot)
+        {
+            if (snapshot.collected_at() <= 0 || snapshot.computer_name().empty())
+            {
+                LOG(LS_ERROR) << "Automatic inventory failed; previous snapshot retained for retry";
+                return;
+            }
+            cached_inventory_ = std::move(snapshot);
+            inventory_collected_at_ = std::chrono::steady_clock::now();
+            sendInventory();
+        });
+    }
+    else
+    {
+        // Re-send the cached daily snapshot after reconnect and periodically. Its collection
+        // time remains unchanged, so delayed/repeated receipt cannot make stale hardware fresh.
+        sendInventory();
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+void RouterController::sendInventory()
+{
+    if (!inventory_supported_ || !cached_inventory_ || !channel_ || !channel_->isConnected())
+        return;
+    for (const auto host_id : audit_host_ids_)
+    {
+        proto::PeerToRouter message;
+        *message.mutable_inventory_snapshot() = *cached_inventory_;
+        message.mutable_inventory_snapshot()->set_host_id(host_id);
+        channel_->send(proto::ROUTER_CHANNEL_ID_SESSION, base::serialize(message));
     }
 }
 

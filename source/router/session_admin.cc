@@ -76,6 +76,18 @@ void SessionAdmin::onSessionMessageReceived(uint8_t /* channel_id */, const base
     {
         doPeerConnectionRequest(message->peer_connection_request());
     }
+    else if (message->has_session_audit_request())
+    {
+        doSessionAuditRequest(message->session_audit_request());
+    }
+    else if (message->has_host_presence_request())
+    {
+        doHostPresenceRequest(message->host_presence_request());
+    }
+    else if (message->has_inventory_request())
+    {
+        doInventoryRequest(message->inventory_request());
+    }
     else
     {
         LOG(LS_ERROR) << "Unhandled message from manager";
@@ -86,6 +98,48 @@ void SessionAdmin::onSessionMessageReceived(uint8_t /* channel_id */, const base
 void SessionAdmin::onSessionMessageWritten(uint8_t /* channel_id */, size_t /* pending */)
 {
     // Nothing
+}
+
+//--------------------------------------------------------------------------------------------------
+void SessionAdmin::doSessionAuditRequest(const proto::SessionAuditRequest& request)
+{
+    proto::RouterToAdmin message;
+    auto* result = message.mutable_session_audit_list();
+    if (!server().auditStore() || !server().auditStore()->auditList(request, result))
+    {
+        result->Clear();
+        result->set_error_code(proto::SessionAuditList::INTERNAL_ERROR);
+    }
+    result->set_request_id(request.request_id());
+    sendMessage(proto::ROUTER_CHANNEL_ID_SESSION, message);
+}
+
+//--------------------------------------------------------------------------------------------------
+void SessionAdmin::doHostPresenceRequest(const proto::HostPresenceRequest& request)
+{
+    proto::RouterToAdmin message;
+    auto* result = message.mutable_host_presence_list();
+    if (!server().auditStore() || !server().auditStore()->presenceList(request, result))
+    {
+        result->Clear();
+        result->set_error_code(proto::HostPresenceList::INTERNAL_ERROR);
+    }
+    result->set_request_id(request.request_id());
+    sendMessage(proto::ROUTER_CHANNEL_ID_SESSION, message);
+}
+
+//--------------------------------------------------------------------------------------------------
+void SessionAdmin::doInventoryRequest(const proto::InventoryRequest& request)
+{
+    proto::RouterToAdmin message;
+    auto* result = message.mutable_inventory_list();
+    if (!server().inventoryStore() || !server().inventoryStore()->query(request, result))
+    {
+        result->Clear();
+        result->set_error_code(proto::InventoryList::INTERNAL_ERROR);
+    }
+    result->set_request_id(request.request_id());
+    sendMessage(proto::ROUTER_CHANNEL_ID_SESSION, message);
 }
 
 //--------------------------------------------------------------------------------------------------

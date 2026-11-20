@@ -26,11 +26,13 @@ list(APPEND SOURCE_PROTO
     file_transfer.proto
     key_exchange.proto
     host_internal.proto
+    inventory.proto
     relay_peer.proto
     router_admin.proto
     router_common.proto
     router_peer.proto
     router_relay.proto
+    session_audit.proto
     system_info.proto
     task_manager.proto
     text_chat.proto)

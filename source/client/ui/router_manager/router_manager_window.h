@@ -23,6 +23,7 @@
 #include "client/router_window.h"
 
 #include <QMainWindow>
+#include <QMap>
 #include <QPointer>
 
 namespace Ui {
@@ -40,6 +41,7 @@ namespace client {
 
 class RouterProxy;
 class RouterWindowProxy;
+class SessionAuditWidget;
 
 class RouterManagerWindow final
     : public QMainWindow,
@@ -52,6 +54,7 @@ public:
     ~RouterManagerWindow() final;
 
     void connectToRouter(const RouterConfig& router_config);
+    void setComputerAliases(const QMap<quint64, QString>& aliases);
 
     // RouterWindow implementation.
     void onConnecting() final;
@@ -65,6 +68,7 @@ public:
     void onSessionResult(std::shared_ptr<proto::SessionResult> session_result) final;
     void onUserList(std::shared_ptr<proto::UserList> user_list) final;
     void onUserResult(std::shared_ptr<proto::UserResult> user_result) final;
+    void onSessionAuditList(std::shared_ptr<proto::SessionAuditList> list) final;
 
     static QString delayToString(uint64_t delay);
     static QString sizeToString(int64_t size);
@@ -107,6 +111,7 @@ private:
     void restoreState(const QByteArray& state);
 
     std::unique_ptr<Ui::RouterManagerWindow> ui;
+    SessionAuditWidget* session_audit_ = nullptr;
 
     QString peer_address_;
     uint16_t peer_port_ = 0;

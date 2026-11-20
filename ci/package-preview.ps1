@@ -1,4 +1,4 @@
-# Private experimental packages, never an automatic-update publication.
+# Draft experimental packages, never an automatic-update publication.
 param([ValidateSet('x86','x64')][string]$Arch = 'x86')
 $ErrorActionPreference = 'Stop'
 $packageArch = if ($Arch -eq 'x64') { 'x86_64' } else { 'x86' }
@@ -6,7 +6,8 @@ $root = Split-Path $PSScriptRoot -Parent
 $bin = Join-Path $root 'builds/ninja-multi-vcpkg-ci/Release'
 $out = Join-Path $root 'preview'
 New-Item -ItemType Directory -Force $out | Out-Null
-$env:ASPIA_VERSION = '2.7.1'
+$version = & (Join-Path $PSScriptRoot 'read-version.ps1')
+$env:ASPIA_VERSION = $version
 $env:ASPIA_BIN_DIR = $bin
 $wixBin = Split-Path (Get-Command candle.exe).Source
 $sdkScript = Get-ChildItem "${env:ProgramFiles(x86)}/Windows Kits/10/bin/*/x86/wisubstg.vbs" | Sort-Object FullName -Descending | Select-Object -First 1
@@ -25,14 +26,17 @@ function Run-Native([string]$exe, [string[]]$arguments) {
 }
 Push-Location (Join-Path $root 'installer')
 try {
-    foreach ($product in @('host', 'client', 'console')) {
-        $base = Join-Path $out "aspia-$product-2.7.1-$packageArch.msi"
+    foreach ($product in @('host', 'client', 'console', 'router')) {
+        $base = Join-Path $out "aspia-$product-$version-$packageArch.msi"
         $object = Join-Path $out "$product.wixobj"
         Run-Native "$wixBin/candle.exe" @('-nologo', '-out', $object, '-arch', $Arch, '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', "$product.wxs")
         Write-Host "Linking $product MSI ($Arch, en-us)"
         Run-Native "$wixBin/light.exe" @('-nologo', '-sval', '-out', $base, '-cultures:en-us', '-ext', 'WixUtilExtension', '-ext', 'WixUIExtension', '-loc', "translations/$product.en-us.wxl", $object)
         $languages = @('1033')
-        foreach ($culture in $installerCultures) {
+        # Router ships only these two translations in the 2.7 source. Retain all
+        # 23 existing cultures for Host, Client and Console without substitution.
+        $cultures = if ($product -eq 'router') { @('en-us', 'fr-fr') } else { $installerCultures }
+        foreach ($culture in $cultures) {
             if ($culture -eq 'en-us') { continue }
             $translation = Join-Path (Get-Location).Path "translations/$product.$culture.wxl"
             if (!(Test-Path $translation)) { throw "Missing installer translation: $translation" }
@@ -62,26 +66,43 @@ try {
         }
     }
 } finally { Pop-Location }
-$hostMsi = Join-Path $out "aspia-host-2.7.1-$packageArch.msi"
-& (Join-Path $PSScriptRoot 'test-host-upgrade.ps1') -NewMsi $hostMsi -Arch $Arch
+$hostMsi = Join-Path $out "aspia-host-$version-$packageArch.msi"
+& (Join-Path $PSScriptRoot 'test-host-upgrade.ps1') -NewMsi $hostMsi -Arch $Arch -ExpectedVersion $version
+$routerMsi = Join-Path $out "aspia-router-$version-$packageArch.msi"
+& (Join-Path $PSScriptRoot 'test-router-upgrade.ps1') -NewMsi $routerMsi -Arch $Arch -ExpectedVersion $version
 $sha = (git -C $root rev-parse HEAD).Trim()
-Run-Native 'git' @('-C', $root, 'archive', '--format=zip', "--output=$out/aspia-2.7.1-clipboard-source.zip", $sha)
+if ($LASTEXITCODE -ne 0 -or $sha -notmatch '^[0-9a-f]{40}$') { throw 'Cannot resolve source commit' }
+Run-Native 'git' @('-C', $root, 'archive', '--format=zip', "--output=$out/aspia-$version-audit-inventory-source.zip", $sha)
 Copy-Item "$root/LICENSE.md" "$out/LICENSE.md"
-Copy-Item "$root/docs/clipboard-preview.md" "$out/README-preview.md"
-$assets = @((Get-ChildItem "$out/aspia-*-2.7.1-$packageArch.msi").FullName) + @("$out/aspia-2.7.1-clipboard-source.zip", "$out/LICENSE.md", "$out/README-preview.md")
+Copy-Item "$root/docs/audit-inventory-preview.md" "$out/README-preview.md"
+$buildInfo = [ordered]@{
+    version = $version
+    architecture = $packageArch
+    source_commit = $sha
+    workflow_run_id = $env:GITHUB_RUN_ID
+    workflow_run_number = $env:GITHUB_RUN_NUMBER
+    validation = @('ctest', 'localized-msi-extraction-and-hashes', 'host-2.7.0-upgrade', 'host-preview20-upgrade', 'router-2.7.0-upgrade-and-data-preservation')
+    interactive_acceptance = 'not_performed'
+}
+$buildInfo | ConvertTo-Json -Depth 5 | Set-Content "$out/build-info-$packageArch.json" -Encoding utf8
+$assets = @((Get-ChildItem "$out/aspia-*-$version-$packageArch.msi").FullName) + @("$out/aspia-$version-audit-inventory-source.zip", "$out/LICENSE.md", "$out/README-preview.md", "$out/build-info-$packageArch.json")
 $hashes = foreach ($asset in $assets) { "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $asset).Hash.ToLower(), (Split-Path $asset -Leaf) }
 $hashes | Set-Content "$out/SHA256SUMS-$packageArch.txt" -Encoding utf8
 $assets += "$out/SHA256SUMS-$packageArch.txt"
-$tag = "v2.7.1-clipboard-preview.$env:GITHUB_RUN_NUMBER"
-$notes = "Private test build from $sha. Windows Host, Client and Console; only architectures present in the MSI filenames have been built. Wait for the complete workflow before testing. Read README-preview.md before testing. Not published to any automatic-update server. Original Router/Relay 2.7 are unchanged. Automated protocol/OLE tests, MSI extraction and isolated Host upgrade test passed for the uploaded packages; two-computer interactive acceptance testing is still required."
+$tag = "v$version-audit-inventory-preview.$env:GITHUB_RUN_NUMBER"
+$notes = "DRAFT — assembly in progress from $sha. Windows Host, Client, Console and Router. Only architectures present in the MSI filenames have been built. Wait for both architecture jobs and the final validation job before testing. This build has not been published to any automatic-update server. Relay 2.7 is retained. Read README-preview.md; real two-computer and Word/Explorer acceptance testing is still required."
 $notes | Set-Content "$out/release-notes.txt" -Encoding utf8
 gh release view $tag --repo $env:GITHUB_REPOSITORY --json id 1>$null 2>$null
 if ($LASTEXITCODE -ne 0) {
-    gh release create $tag --repo $env:GITHUB_REPOSITORY --target $sha --draft --prerelease --title 'Aspia 2.7.1 — clipboard files preview' --notes-file "$out/release-notes.txt"
+    gh release create $tag --repo $env:GITHUB_REPOSITORY --target $sha --draft --prerelease --title "Aspia $version — sessions and inventory preview" --notes-file "$out/release-notes.txt"
     if ($LASTEXITCODE -ne 0) {
         # Another architecture may have created the draft concurrently.
         Run-Native 'gh' @('release', 'view', $tag, '--repo', $env:GITHUB_REPOSITORY, '--json', 'id')
     }
+}
+$release = gh release view $tag --repo $env:GITHUB_REPOSITORY --json isDraft,targetCommitish,tagName | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0 -or !$release.isDraft -or $release.tagName -ne $tag -or $release.targetCommitish -ne $sha) {
+    throw 'Refusing to upload packages into a published release or a release from another commit.'
 }
 Run-Native 'gh' (@('release', 'upload', $tag, '--repo', $env:GITHUB_REPOSITORY, '--clobber') + $assets)
 "Draft release: https://github.com/$env:GITHUB_REPOSITORY/releases" >> $env:GITHUB_STEP_SUMMARY

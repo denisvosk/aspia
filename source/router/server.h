@@ -22,6 +22,9 @@
 #include "base/net/tcp_server.h"
 #include "base/peer/host_id.h"
 #include "base/peer/server_authenticator_manager.h"
+#include "base/waitable_timer.h"
+#include "common/session_audit_store.h"
+#include "common/inventory_store.h"
 #include "build/build_config.h"
 #include "proto/router_admin.pb.h"
 #include "router/session.h"
@@ -48,6 +51,9 @@ public:
     std::unique_ptr<proto::SessionList> sessionList() const;
     bool stopSession(Session::SessionId session_id);
     void onHostSessionWithId(SessionHost* session);
+    void recordHostPresence(SessionHost* session, bool online);
+    common::SessionAuditStore* auditStore() const { return audit_store_.get(); }
+    common::InventoryStore* inventoryStore() const { return inventory_store_.get(); }
 
     SessionHost* hostSessionById(base::HostId host_id);
     Session* sessionById(Session::SessionId session_id);
@@ -73,6 +79,9 @@ private:
     std::unique_ptr<base::ServerAuthenticatorManager> authenticator_manager_;
     std::unique_ptr<SharedKeyPool> relay_key_pool_;
     std::vector<std::unique_ptr<Session>> sessions_;
+    std::unique_ptr<common::SessionAuditStore> audit_store_;
+    std::unique_ptr<common::InventoryStore> inventory_store_;
+    std::unique_ptr<base::WaitableTimer> presence_timer_;
 
     std::vector<std::u16string> client_white_list_;
     std::vector<std::u16string> host_white_list_;

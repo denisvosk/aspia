@@ -74,6 +74,10 @@ list(APPEND SOURCE_CONSOLE
     fast_connect_dialog.ui
     import_export_util.cc
     import_export_util.h
+    inventory_dialog.cc
+    inventory_dialog.h
+    inventory_report.cc
+    inventory_report.h
     main_window.cc
     main_window.h
     main_window.ui
@@ -177,3 +181,9 @@ if(Qt5LinguistTools_FOUND)
     create_translation(TS_CONSOLE_UPDATE ${CONSOLE_TR_SOURCES} ${CONSOLE_TS_FILES})
     add_custom_target(aspia_console_ts_update DEPENDS ${TS_CONSOLE_UPDATE})
 endif()
+
+add_executable(aspia_inventory_report_tests inventory_report.cc inventory_report_unittest.cc
+    ../client/client_config.cc ../client/router_config.cc)
+target_link_libraries(aspia_inventory_report_tests PRIVATE aspia_base aspia_proto
+    Qt5::Core GTest::gtest_main ${THIRD_PARTY_LIBS})
+add_test(NAME aspia_inventory_report_tests COMMAND aspia_inventory_report_tests)

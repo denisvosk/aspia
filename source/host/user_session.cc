@@ -32,6 +32,7 @@
 #include "host/client_session_desktop.h"
 #include "host/client_session_text_chat.h"
 #include "host/desktop_session_proxy.h"
+#include "host/host_key_storage.h"
 
 #if defined(OS_WIN)
 #include "base/win/session_enumerator.h"
@@ -164,6 +165,9 @@ const char* UserSession::stateToString(State state)
 //--------------------------------------------------------------------------------------------------
 void UserSession::start(const proto::internal::RouterState& router_state)
 {
+    const auto audit_session_name = sessionName();
+    if (audit_session_name.has_value())
+        audit_host_id_ = HostKeyStorage().lastHostId(*audit_session_name);
     LOG(LS_INFO) << "User session started "
                  << (channel_ ? "WITH" : "WITHOUT")
                  << " connection to UI (sid=" << session_id_ << ")";
@@ -575,6 +579,7 @@ void UserSession::onHostIdChanged(base::HostId host_id)
     LOG(LS_INFO) << "Host id changed from " << host_id_ << " to " << host_id;
 
     host_id_ = host_id;
+    audit_host_id_ = host_id;
     sendCredentials(FROM_HERE);
 }
 
@@ -1416,6 +1421,7 @@ void UserSession::addNewClientSession(std::unique_ptr<ClientSession> client_sess
 
     LOG(LS_INFO) << "Starting session... (sid=" << session_id_ << ")";
     client_session_ptr->setSessionId(sessionId());
+    client_session_ptr->setAuditHostId(audit_host_id_);
     client_session_ptr->start(this);
 
     // Notify the UI of a new connection.

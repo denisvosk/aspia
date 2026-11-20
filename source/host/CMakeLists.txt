@@ -19,6 +19,8 @@
 include(translations)
 
 list(APPEND SOURCE_HOST_CORE
+    ../common/session_audit_store.cc
+    ../common/session_audit_store.h
     client_session.cc
     client_session.h
     client_session_desktop.cc
@@ -57,6 +59,8 @@ list(APPEND SOURCE_HOST_CORE
     input_injector.h
     integrity_check.cc
     integrity_check.h
+    inventory_collector.cc
+    inventory_collector.h
     router_controller.cc
     router_controller.h
     server.cc
@@ -188,6 +192,7 @@ target_link_libraries(aspia_host_core PRIVATE
     aspia_common
     aspia_proto
     aspia_qt_base
+    unofficial::sqlite3::sqlite3
     ${HOST_PLATFORM_LIBS}
     ${QT_COMMON_LIBS}
     ${QT_PLATFORM_LIBS}

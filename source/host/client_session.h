@@ -26,6 +26,9 @@
 #include "proto/desktop_extensions.pb.h"
 #include "proto/desktop.pb.h"
 #include "proto/text_chat.pb.h"
+#include "proto/session_audit.pb.h"
+
+#include <functional>
 
 namespace base {
 class TcpChannelProxy;
@@ -91,6 +94,9 @@ public:
     base::SessionId sessionId() const { return session_id_; }
 
     base::HostId hostId() const { return channel_->hostId(); }
+    void setAuditHostId(base::HostId host_id) { audit_host_id_ = host_id; }
+    void setAuditCallback(std::function<void(proto::SessionAuditRecord)> callback)
+    { audit_callback_ = std::move(callback); }
 
 protected:
     ClientSession(proto::SessionType session_type, std::unique_ptr<base::TcpChannel> channel);
@@ -116,6 +122,12 @@ protected:
     Delegate* delegate_ = nullptr;
 
 private:
+    void finishAudit(proto::SessionAuditRecord::State state);
+    base::HostId audit_host_id_ = base::kInvalidHostId;
+    std::function<void(proto::SessionAuditRecord)> audit_callback_;
+    proto::SessionAuditRecord audit_record_;
+    std::chrono::steady_clock::time_point audit_started_;
+    bool audit_active_ = false;
     base::SessionId session_id_ = base::kInvalidSessionId;
     State state_ = State::CREATED;
     uint32_t id_;

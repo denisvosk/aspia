@@ -24,8 +24,13 @@
 #include "base/peer/host_id.h"
 #include "base/peer/relay_peer_manager.h"
 #include "proto/host_internal.pb.h"
+#include "common/session_audit_store.h"
+#include "host/inventory_collector.h"
 
 #include <queue>
+#include <map>
+#include <set>
+#include <optional>
 
 namespace base {
 class ClientAuthenticator;
@@ -62,6 +67,7 @@ public:
 
     void hostIdRequest(const std::string& session_name);
     void resetHostId(base::HostId host_id);
+    void recordAudit(proto::SessionAuditRecord record);
 
     const std::u16string& address() const { return router_info_.address; }
     uint16_t port() const { return router_info_.port; }
@@ -82,6 +88,10 @@ private:
     void delayedConnectToRouter();
     void routerStateChanged(proto::internal::RouterState::State state);
     static const char* routerStateToString(proto::internal::RouterState::State state);
+    void flushAudit();
+    void checkpointAudit();
+    void refreshInventory();
+    void sendInventory();
 
     Delegate* delegate_ = nullptr;
 
@@ -93,6 +103,22 @@ private:
     RouterInfo router_info_;
 
     std::queue<std::string> pending_id_requests_;
+    std::unique_ptr<common::SessionAuditStore> audit_outbox_;
+    base::WaitableTimer audit_timer_;
+    bool audit_supported_ = false;
+    std::set<base::HostId> audit_host_ids_;
+    std::map<std::string, uint64_t> audit_in_flight_;
+    struct ActiveAudit
+    {
+        proto::SessionAuditRecord record;
+        std::chrono::steady_clock::time_point checkpoint;
+    };
+    std::map<std::string, ActiveAudit> active_audits_;
+    std::unique_ptr<InventoryCollector> inventory_collector_;
+    base::WaitableTimer inventory_timer_;
+    bool inventory_supported_ = false;
+    std::optional<proto::InventorySnapshot> cached_inventory_;
+    std::chrono::steady_clock::time_point inventory_collected_at_;
 
     DISALLOW_COPY_AND_ASSIGN(RouterController);
 };

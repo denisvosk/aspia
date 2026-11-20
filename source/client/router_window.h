@@ -26,6 +26,9 @@ class SessionList;
 class SessionResult;
 class UserList;
 class UserResult;
+class SessionAuditList;
+class HostPresenceList;
+class InventoryList;
 } // namespace proto
 
 namespace client {
@@ -46,6 +49,9 @@ public:
     virtual void onSessionResult(std::shared_ptr<proto::SessionResult> session_result) = 0;
     virtual void onUserList(std::shared_ptr<proto::UserList> user_list) = 0;
     virtual void onUserResult(std::shared_ptr<proto::UserResult> user_result) = 0;
+    virtual void onSessionAuditList(std::shared_ptr<proto::SessionAuditList>) {}
+    virtual void onHostPresenceList(std::shared_ptr<proto::HostPresenceList>) {}
+    virtual void onInventoryList(std::shared_ptr<proto::InventoryList>) {}
 };
 
 } // namespace client

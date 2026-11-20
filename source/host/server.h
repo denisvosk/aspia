@@ -98,6 +98,7 @@ private:
     std::unique_ptr<RouterController> router_controller_;
     std::unique_ptr<base::ServerAuthenticatorManager> authenticator_manager_;
     std::unique_ptr<UserSessionManager> user_session_manager_;
+    std::shared_ptr<int> audit_lifetime_ = std::make_shared<int>(0);
 
     std::unique_ptr<common::UpdateChecker> update_checker_;
     std::unique_ptr<common::HttpFileDownloader> update_downloader_;

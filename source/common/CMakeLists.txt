@@ -180,3 +180,13 @@ if (WIN32)
     target_link_libraries(aspia_clipboard_tests PRIVATE crypt32 iphlpapi ws2_32)
 endif()
 add_test(NAME aspia_clipboard_tests COMMAND aspia_clipboard_tests)
+
+add_executable(aspia_audit_tests session_audit_store.cc session_audit_store_unittest.cc)
+target_link_libraries(aspia_audit_tests PRIVATE aspia_proto
+    ${Protobuf_LITE_LIBRARIES} unofficial::sqlite3::sqlite3 GTest::gtest_main)
+add_test(NAME aspia_audit_tests COMMAND aspia_audit_tests)
+
+add_executable(aspia_inventory_tests inventory_store.cc inventory_store_unittest.cc)
+target_link_libraries(aspia_inventory_tests PRIVATE aspia_proto
+    ${Protobuf_LITE_LIBRARIES} unofficial::sqlite3::sqlite3 GTest::gtest_main)
+add_test(NAME aspia_inventory_tests COMMAND aspia_inventory_tests)

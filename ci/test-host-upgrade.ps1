@@ -1,6 +1,7 @@
 # Runs only on an isolated GitHub Windows runner. Never uses a production config.
 param([Parameter(Mandatory=$true)][string]$NewMsi,
-      [ValidateSet('x86','x64')][string]$Arch = 'x86')
+      [ValidateSet('x86','x64')][string]$Arch = 'x86',
+      [Parameter(Mandatory=$true)][string]$ExpectedVersion)
 $packageArch = if ($Arch -eq 'x64') { 'x86_64' } else { 'x86' }
 $expectedHash = if ($Arch -eq 'x64') { '8ba2a5dbb716edfb7bbd72483163111f9efd6e978ae0f81a0769842970331d5d' } else { '969b312fc7d6d178155faed901cb14c08cc5f55fb2746d6315fd2289829b247f' }
 $ErrorActionPreference = 'Stop'
@@ -26,14 +27,16 @@ function Install-TestMsi([string]$path, [string]$name) {
     }
     (Get-Service aspia-host-service).WaitForStatus('Running', [TimeSpan]::FromSeconds(30))
 }
-$previousDir = Join-Path $work 'preview18'
+$previousDir = Join-Path $work 'preview20'
 New-Item -ItemType Directory -Force $previousDir | Out-Null
 $previousName = "aspia-host-2.7.1-$packageArch.msi"
-gh release download 'v2.7.1-clipboard-preview.18' --repo $env:GITHUB_REPOSITORY --pattern $previousName --dir $previousDir --clobber
-if ($LASTEXITCODE) { throw 'Could not download the previously installed preview.18 for upgrade testing' }
+# Preview.18 (release 416788911) was removed. Preview.20 is the retained build;
+# these digests were verified against release 416827719 on 2026-11-20.
+gh release download 'v2.7.1-clipboard-preview.20' --repo $env:GITHUB_REPOSITORY --pattern $previousName --dir $previousDir --clobber
+if ($LASTEXITCODE) { throw 'Could not download the retained preview.20 for upgrade testing' }
 $previous = Join-Path $previousDir $previousName
-$previousHash = if ($Arch -eq 'x64') { 'd80c5167dc7376e14d1b521b85162b33ae149d3f23991dabe75bd40508aef83c' } else { 'dd5e9d72c047c82577d5b09101d5fbd13769368f8d3a9bf6b04a9b065cb2254c' }
-if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLower() -ne $previousHash) { throw 'Preview.18 MSI checksum mismatch' }
+$previousHash = if ($Arch -eq 'x64') { 'ece4cdb9a1b669cce65af3603e23cd852fbf85eb2c3206231114a4cf989637d6' } else { 'bbf5b7052856d8d5fd33853c1a7eb98ad7c651454694912c6a4a09d85bb7bcc0' }
+if ((Get-FileHash $previous -Algorithm SHA256).Hash.ToLower() -ne $previousHash) { throw 'Preview.20 MSI checksum mismatch' }
 $installed = $old
 try {
     Install-TestMsi $old 'install-original'
@@ -62,8 +65,8 @@ try {
     $programFiles = if ($Arch -eq 'x64') { $env:ProgramFiles } else { ${env:ProgramFiles(x86)} }
     $exe = Join-Path $programFiles 'Aspia/Host/aspia_host_service.exe'
     if (!(Test-Path $exe)) { throw 'Upgraded Host service executable missing' }
-    if ((Get-Item $exe).VersionInfo.ProductVersion -notlike '2.7.1.*') { throw 'Host service was not upgraded to 2.7.1' }
-    "Host $Arch 2.7.0 -> 2.7.1: service running and test configuration preserved." | Write-Host
+    if ((Get-Item $exe).VersionInfo.ProductVersion -notlike "$ExpectedVersion.*") { throw "Host service was not upgraded to $ExpectedVersion" }
+    "Host $Arch 2.7.0 -> ${ExpectedVersion}: service running and test configuration preserved." | Write-Host
     function Assert-InstalledPayload {
         $builtDir = Join-Path (Split-Path $PSScriptRoot -Parent) 'builds/ninja-multi-vcpkg-ci/Release'
         foreach ($name in 'aspia_host_service.exe','aspia_host.exe','aspia_desktop_agent.exe') {
@@ -77,21 +80,21 @@ try {
     Assert-InstalledPayload
     # Also exercise the user's exact situation: replace an existing 2.7.1 preview.
     $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
-    if ($p.ExitCode -ne 0) { throw "Could not prepare same-version upgrade test: $($p.ExitCode)" }
+    if ($p.ExitCode -ne 0) { throw "Could not prepare retained-preview upgrade test: $($p.ExitCode)" }
     $installed = $previous
-    Install-TestMsi $previous 'install-preview18'
+    Install-TestMsi $previous 'install-preview20'
     $before = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
-    Install-TestMsi $NewMsi 'upgrade-preview18-to-current'
+    Install-TestMsi $NewMsi 'upgrade-preview20-to-current'
     $installed = $NewMsi
     $after = Get-Content $configPath -Raw | ConvertFrom-Json -AsHashtable
     foreach ($key in $before.Keys) {
         if ((ConvertTo-Json -InputObject $before[$key] -Depth 30 -Compress) -ne
             (ConvertTo-Json -InputObject $after[$key] -Depth 30 -Compress)) {
-            throw "Host setting changed during same-version upgrade: $key"
+            throw "Host setting changed during retained-preview upgrade: $key"
         }
     }
     Assert-InstalledPayload
-    "Host $Arch preview.18 -> current 2.7.1: service running, configuration preserved, installed binary hashes match this build." | Write-Host
+    "Host $Arch preview.20 -> current ${ExpectedVersion}: service running, configuration preserved, installed binary hashes match this build." | Write-Host
 } finally {
     $p = Start-Process msiexec.exe -ArgumentList @('/x', "`"$installed`"", '/qn', '/norestart') -Wait -PassThru
     if ($p.ExitCode -notin 0,1605,3010) { Write-Warning "Cleanup MSI exit code: $($p.ExitCode)" }

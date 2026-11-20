@@ -32,6 +32,9 @@ class TaskRunner;
 
 namespace proto {
 class User;
+class SessionAuditRequest;
+class HostPresenceRequest;
+class InventoryRequest;
 } // namespace proto
 
 namespace client {
@@ -47,6 +50,9 @@ public:
     void connectToRouter(const std::u16string& address, uint16_t port);
     void disconnectFromRouter();
     void refreshSessionList();
+    void refreshSessionAudit(const proto::SessionAuditRequest& request);
+    void refreshHostPresence(const proto::HostPresenceRequest& request);
+    void refreshInventory(const proto::InventoryRequest& request);
     void stopSession(int64_t session_id);
     void refreshUserList();
     void addUser(const proto::User& user);

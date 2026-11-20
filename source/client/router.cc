@@ -96,6 +96,36 @@ void Router::refreshSessionList()
 }
 
 //--------------------------------------------------------------------------------------------------
+void Router::refreshSessionAudit(const proto::SessionAuditRequest& request)
+{
+    if (!channel_)
+        return;
+    proto::AdminToRouter message;
+    message.mutable_session_audit_request()->CopyFrom(request);
+    channel_->send(proto::ROUTER_CHANNEL_ID_SESSION, base::serialize(message));
+}
+
+//--------------------------------------------------------------------------------------------------
+void Router::refreshHostPresence(const proto::HostPresenceRequest& request)
+{
+    if (!channel_)
+        return;
+    proto::AdminToRouter message;
+    message.mutable_host_presence_request()->CopyFrom(request);
+    channel_->send(proto::ROUTER_CHANNEL_ID_SESSION, base::serialize(message));
+}
+
+//--------------------------------------------------------------------------------------------------
+void Router::refreshInventory(const proto::InventoryRequest& request)
+{
+    if (!channel_)
+        return;
+    proto::AdminToRouter message;
+    message.mutable_inventory_request()->CopyFrom(request);
+    channel_->send(proto::ROUTER_CHANNEL_ID_SESSION, base::serialize(message));
+}
+
+//--------------------------------------------------------------------------------------------------
 void Router::stopSession(int64_t session_id)
 {
     LOG(LS_INFO) << "Sending disconnect request (session_id: " << session_id << ")";
@@ -369,6 +399,21 @@ void Router::onTcpMessageReceived(uint8_t /* channel_id */, const base::ByteArra
 
         window_proxy_->onUserResult(
             std::shared_ptr<proto::UserResult>(message.release_user_result()));
+    }
+    else if (message.has_session_audit_list())
+    {
+        window_proxy_->onSessionAuditList(
+            std::shared_ptr<proto::SessionAuditList>(message.release_session_audit_list()));
+    }
+    else if (message.has_host_presence_list())
+    {
+        window_proxy_->onHostPresenceList(
+            std::shared_ptr<proto::HostPresenceList>(message.release_host_presence_list()));
+    }
+    else if (message.has_inventory_list())
+    {
+        window_proxy_->onInventoryList(
+            std::shared_ptr<proto::InventoryList>(message.release_inventory_list()));
     }
     else
     {

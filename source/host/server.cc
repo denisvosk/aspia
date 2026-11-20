@@ -61,6 +61,7 @@ Server::~Server()
     settings_watcher_.reset();
     authenticator_manager_.reset();
     user_session_manager_.reset();
+    audit_lifetime_.reset();
     server_.reset();
 
     deleteFirewallRules();
@@ -221,6 +222,12 @@ void Server::onNewSession(base::ServerAuthenticatorManager::SessionInfo&& sessio
         session->setDisplayName(session_info.display_name);
         session->setUserName(session_info.user_name);
         session->setAllowedSessionTypes(session_info.allowed_session_types);
+        std::weak_ptr<int> lifetime = audit_lifetime_;
+        session->setAuditCallback([this, lifetime](proto::SessionAuditRecord record)
+        {
+            if (lifetime.lock() && router_controller_)
+                router_controller_->recordAudit(std::move(record));
+        });
     }
     else
     {

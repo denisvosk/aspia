@@ -1,4 +1,4 @@
-name: Windows 2.7 clipboard preview
+name: Windows 2.7.2 audit and inventory preview
 on:
   pull_request:
     paths:
@@ -12,8 +12,25 @@ concurrency:
   group: clipboard-windows-${{ github.head_ref || github.ref }}
   cancel-in-progress: false
 jobs:
+  audit:
+    name: Audit storage, inventory and report logic
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y libprotobuf-dev protobuf-compiler libgtest-dev libsqlite3-dev qtbase5-dev libssl-dev libasio-dev
+      - name: Build audit and inventory tests
+        run: cmake -S ci/audit-tests -B build-audit -DCMAKE_BUILD_TYPE=Debug && cmake --build build-audit --parallel 4
+      - name: Run audit and inventory tests
+        run: ctest --test-dir build-audit --output-on-failure --timeout 60
+      - name: Verify release helper behavior
+        run: python3 ci/test-release-helpers.py -v
   windows:
     name: windows-${{ matrix.arch }}
+    needs: audit
     strategy:
       fail-fast: false
       matrix:
@@ -33,14 +50,6 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      - name: Cancel obsolete upstream builds for this branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $runs = gh run list --workflow sw.yml --branch feature/clipboard-files-2.7 --json databaseId,status --limit 20 | ConvertFrom-Json
-          foreach ($run in $runs) {
-            if ($run.status -in 'queued','in_progress','waiting','pending') { gh run cancel $run.databaseId }
-          }
       - uses: actions/checkout@v4
         with:
           repository: dchapyshev/vcpkg4aspia
@@ -117,5 +126,19 @@ jobs:
       - name: Package preview
         if: hashFiles('ci/package-preview.ps1') != ''
         run: ./ci/package-preview.ps1 -Arch "${{ matrix.arch }}"
+        env:
+          GH_TOKEN: ${{ github.token }}
+  finalize:
+    name: Verify complete draft and prepare website downloads
+    needs: [audit, windows]
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify both architectures and prepare download site
+        shell: pwsh
+        run: ./ci/finalize-preview.ps1
         env:
           GH_TOKEN: ${{ github.token }}

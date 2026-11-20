@@ -154,6 +154,9 @@ private:
     base::SessionId session_id_;
     proto::internal::RouterState router_state_;
     base::HostId host_id_ = base::kInvalidHostId;
+    // Last assigned ID remains usable for audit while the Router is temporarily offline.
+    // It is never used to grant access or generate one-time credentials.
+    base::HostId audit_host_id_ = base::kInvalidHostId;
 
     bool password_enabled_ = false;
     uint32_t password_characters_ = 0;
