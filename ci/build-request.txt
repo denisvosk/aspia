@@ -1,4 +1,5 @@
 Aspia+ 2.7.2 audit and automatic inventory preview
 Build the consolidated Host, Router, Console and Client for x86 and x64.
 Include authenticated Router-user correlation and the installed Windows inventory worker smoke test.
+Run the independent Linux syntax/test gate while Windows dependencies are building.
 Do not publish or deploy automatically.

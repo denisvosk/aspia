@@ -1,0 +1,48 @@
+name: Audit and inventory Linux checks
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/audit-inventory-linux.yml'
+      - 'ci/audit-tests/**'
+      - 'ci/test-release-helpers.py'
+      - 'ci/test-inventory-worker.py'
+      - 'ci/make-download-site.py'
+      - 'ci/router-upgrade-data.py'
+      - 'source/proto/**'
+      - 'source/common/session_audit_*'
+      - 'source/common/inventory_*'
+      - 'source/client/router*'
+      - 'source/client/session_audit_helpers_unittest.cc'
+      - 'source/client/ui/router_manager/session_audit*'
+      - 'source/console/inventory_*'
+      - 'source/base/net/tcp_channel.h'
+      - 'source/base/peer/relay_peer.*'
+      - 'source/host/client_session.*'
+      - 'source/host/router_controller.*'
+      - 'source/router/session_client.*'
+      - 'source/router/session_admin.*'
+      - 'source/router/session_host.*'
+      - 'source/router/server.*'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: audit-inventory-linux-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  audit:
+    name: Audit storage, identity paths and inventory UI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Test dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y libprotobuf-dev protobuf-compiler libgtest-dev libsqlite3-dev qtbase5-dev libssl-dev libasio-dev
+      - name: Build audit and inventory tests
+        run: cmake -S ci/audit-tests -B build-audit -DCMAKE_BUILD_TYPE=Debug && cmake --build build-audit --parallel 4
+      - name: Run audit and inventory tests
+        run: ctest --test-dir build-audit --output-on-failure --timeout 60
+      - name: Verify release helper behavior
+        run: python3 ci/test-release-helpers.py -v
