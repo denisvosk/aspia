@@ -103,7 +103,9 @@ def run_bounded(command, *, timeout, stdout_limit, stderr_limit=16384, data=b"",
 
 def decoded_bytes(text, name):
     """Read one top-level bytes/string field emitted by protoc TextFormat."""
-    matches = re.findall(r'^' + re.escape(name) + r': ("(?:[^"\\]|\\.)*")$', text, re.MULTILINE)
+    # Windows protoc emits CRLF on its text stdout. Accept that line ending;
+    # the captured protobuf stdin/stdout remains raw bytes throughout the probe.
+    matches = re.findall(r'^' + re.escape(name) + r': ("(?:[^"\\]|\\.)*")\r?$', text, re.MULTILINE)
     if len(matches) != 1:
         raise ProbeFailure(f"Missing or duplicate {name} in decoded snapshot")
     # protoc's default TextFormat escapes non-ASCII bytes with C/octal escapes.
@@ -118,7 +120,7 @@ def decoded_bytes(text, name):
 
 
 def decoded_integer(text, name):
-    matches = re.findall(r'^' + re.escape(name) + r': (-?[0-9]+)$', text, re.MULTILINE)
+    matches = re.findall(r'^' + re.escape(name) + r': (-?[0-9]+)\r?$', text, re.MULTILINE)
     if len(matches) != 1:
         raise ProbeFailure(f"Missing or duplicate {name} in decoded snapshot")
     return int(matches[0])
