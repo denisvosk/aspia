@@ -21,8 +21,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      ANDROID_AVD_HOME: ${{ runner.temp }}/aspia-smoke-avd
-      ANDROID_EMULATOR_HOME: ${{ runner.temp }}/aspia-smoke-emulator
+      ANDROID_AVD_HOME: ${{ github.workspace }}/aspia-smoke-avd
+      ANDROID_EMULATOR_HOME: ${{ github.workspace }}/aspia-smoke-emulator
     steps:
       - uses: actions/checkout@v4
         with:
