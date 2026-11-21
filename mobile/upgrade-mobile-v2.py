@@ -70,6 +70,20 @@ def apply(root: Path) -> None:
         '    connect(server_book, &Button::clicked, book_manager_, &MobileBookManager::configureSource);',
         '    connect(server_book, &Button::clicked, this, &LocalWidget::onAddHost);')
 
+    # Offline-only address books: the shipped UI has local .aab import but
+    # no online publishing, downloading or refresh controls.
+    replace_once(local,
+        '    enum { kBook, kRefreshBook, kSource, kAddGroup, kAddHost };',
+        '    enum { kBook, kAddGroup, kAddHost };')
+    replace_once(local,
+        '    menu->addItem(QStringLiteral("Обновить книгу с сервера"), ":/img/material/refresh.svg");\n'
+        '    menu->addItem(QStringLiteral("Источник книги"), ":/img/settings.svg");\n',
+        '')
+    replace_once(local,
+        '            case kRefreshBook: book_manager_->refresh(); break;\n'
+        '            case kSource: book_manager_->configureSource(); break;\n',
+        '')
+
     presets = root / "CMakePresets.json"
     replace_once(presets,
         '"ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.1",',
