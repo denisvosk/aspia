@@ -29,6 +29,7 @@ jobs:
           cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" apk-signing-tools/lib/
           cp -L "$(find /usr/lib -name 'libc++.so.1*' -print -quit)" apk-signing-tools/lib/libc++.so.1
           cp -L "$(find /usr/lib -name 'libc++abi.so.1*' -print -quit)" apk-signing-tools/lib/libc++abi.so.1
+          cp -L "$(find /usr/lib -name 'libunwind.so.1*' -print -quit)" apk-signing-tools/lib/libunwind.so.1
           test -s apk-signing-tools/lib/apksigner.jar
       - uses: actions/upload-artifact@v4
         with:
