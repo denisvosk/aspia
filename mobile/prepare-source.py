@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+"""Prepare the complete, pinned Aspia+ Mobile source tree (Python 3 + Git)."""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+
+
+def run(*args: str, cwd: Path | None = None) -> str:
+    completed = subprocess.run(args, cwd=cwd, check=True, text=True,
+                               stdout=subprocess.PIPE, stderr=None)
+    if completed.stdout:
+        print(completed.stdout, end="")
+    return completed.stdout.strip()
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, required=True,
+                        help="New or empty directory for the complete source tree")
+    parser.add_argument("--no-submodules", action="store_true",
+                        help="Do not download build dependencies yet")
+    args = parser.parse_args()
+    bundle = Path(__file__).resolve().parent
+    lock = json.loads((bundle / "source-lock.json").read_text(encoding="utf-8"))
+    patch = bundle / lock["patch_file"]
+    digest = hashlib.sha256(patch.read_bytes()).hexdigest()
+    if digest != lock["patch_sha256"]:
+        raise RuntimeError("Patch SHA-256 mismatch. Download the source package again.")
+    output = args.output.expanduser().resolve()
+    if output.exists() and (not output.is_dir() or any(output.iterdir())):
+        raise RuntimeError("Output must be a new or empty directory; existing files are preserved.")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    run("git", "clone", "--depth", "1", "--branch", lock["upstream_tag"],
+        lock["upstream_repository"], str(output))
+    actual = run("git", "rev-parse", "HEAD", cwd=output)
+    if actual != lock["upstream_commit"]:
+        raise RuntimeError("Upstream tag does not match the pinned source commit; patch not applied.")
+    run("git", "apply", "--check", str(patch), cwd=output)
+    run("git", "apply", str(patch), cwd=output)
+    if not args.no_submodules:
+        run("git", "submodule", "sync", "--recursive", cwd=output)
+        run("git", "submodule", "update", "--init", "--recursive", cwd=output)
+    print(f"Complete Aspia+ Mobile source is ready: {output}")
+    print("Build instructions: ci/mobile-tests and .github/workflows/mobile-android.yml")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except (OSError, RuntimeError, ValueError, subprocess.CalledProcessError) as exc:
+        print(f"Source preparation failed: {exc}", file=sys.stderr)
+        raise SystemExit(1)

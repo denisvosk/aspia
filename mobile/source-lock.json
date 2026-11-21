@@ -1,0 +1,18 @@
+{
+  "product": "Aspia+ Mobile",
+  "version": "2.7.2-mobile.1",
+  "version_code": 20702001,
+  "application_id": "org.aspiaplus.client",
+  "architecture": "arm64-v8a",
+  "minimum_android_sdk": 31,
+  "upstream_repository": "https://github.com/dchapyshev/aspia.git",
+  "upstream_tag": "v3.0.37",
+  "upstream_commit": "68e2fc9e05aff6c874b2cc32132978e859a0291f",
+  "patch_file": "aspia-mobile-2.7.2.patch",
+  "patch_sha256": "1f8149ea9a528428ad48e620474bb4de541656aefe1dd65622cb12c6c5ef06a6",
+  "vcpkg_commit": "2f9d9056eb90bd8f735e41b966c5203644bdd538",
+  "qt_version": "6.11.1",
+  "ndk_version": "27.2.12479018",
+  "jdk_version": "21",
+  "release_date": "2026-11-22"
+}
