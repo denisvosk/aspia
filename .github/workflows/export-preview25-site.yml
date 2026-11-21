@@ -1,0 +1,65 @@
+name: Export verified Aspia 2.7.2 preview.25 download site
+
+on:
+  push:
+    branches:
+      - ops/export-preview25-site
+
+permissions:
+  contents: read
+
+jobs:
+  export-site:
+    name: Export verified preview.25 site ZIP
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download original draft release bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p original extracted
+          gh release download v2.7.2-audit-inventory-preview.25 \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'aspia-downloads-v2.7.2-audit-inventory-preview.25.zip' \
+            --dir original
+          echo '44b8ea97c285079a114df180e08d18f1ca8cb98315453d71fa9e86e16971e360  original/aspia-downloads-v2.7.2-audit-inventory-preview.25.zip' | sha256sum --check
+          unzip -t original/aspia-downloads-v2.7.2-audit-inventory-preview.25.zip
+          unzip -q original/aspia-downloads-v2.7.2-audit-inventory-preview.25.zip -d extracted
+
+      - name: Check every MSI and package manifest after extraction
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, sys
+          root = pathlib.Path('extracted/aspia-downloads/site')
+          assert root.joinpath('index.html').is_file()
+          assert pathlib.Path('extracted/aspia-downloads/README-deploy.md').is_file()
+          manifest = json.loads(root.joinpath('manifest.json').read_text(encoding='utf-8'))
+          assert manifest['version'] == '2.7.2'
+          assert manifest['source_commit'] == '990b5c0933b23645c57059e6612ebce08fb51e10'
+          assert manifest['tag'] == 'v2.7.2-audit-inventory-preview.25'
+          entries = manifest['files']
+          assert len(entries) >= 13
+          names = set()
+          for entry in entries:
+              name = entry['file']
+              assert '/' not in name and '\\' not in name and name not in names
+              names.add(name)
+              file = root/'files'/name
+              assert file.is_file() and file.stat().st_size == entry['size_bytes'], name
+              assert hashlib.sha256(file.read_bytes()).hexdigest() == entry['sha256'], name
+          for part in ('console', 'client', 'host', 'router'):
+              for arch in ('x86', 'x86_64'):
+                  assert f'aspia-{part}-2.7.2-{arch}.msi' in names
+          print(f"Verified {len(entries)} packaged files and 8 MSI installers")
+          PY
+
+      - name: Make uploadable deploy-ready ZIP (preserve aspia-downloads root)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aspia-2.7.2-preview25-website-ready
+          path: extracted/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
