@@ -1074,7 +1074,7 @@ index 0000000000000000000000000000000000000000..559d20b7e9b844e4899261af82451618
 +}
 diff --git a/ops/mobile/Mobile-Book.Common.ps1 b/ops/mobile/Mobile-Book.Common.ps1
 new file mode 100644
-index 0000000000000000000000000000000000000000..fdf2f392be8dea6620ab34a3bf507add0fa27c63
+index 0000000000000000000000000000000000000000..813c89ff3c14a352b36d61c9c8f58e4cfa062142
 --- /dev/null
 +++ b/ops/mobile/Mobile-Book.Common.ps1
 @@ -0,0 +1,359 @@
@@ -1382,7 +1382,7 @@ index 0000000000000000000000000000000000000000..fdf2f392be8dea6620ab34a3bf507add
 +    $temporary = $Path + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
 +    try {
 +        [IO.File]::WriteAllBytes($temporary, $Bytes)
-+        if ([IO.File]::Exists($Path)) { [IO.File]::Replace($temporary, $Path, $null) }
++        if ([IO.File]::Exists($Path)) { $backupPath = $Path + '.' + [Guid]::NewGuid().ToString('N') + '.replace.bak'; [IO.File]::Replace($temporary, $Path, $backupPath); if ([IO.File]::Exists($backupPath)) { [IO.File]::Delete($backupPath) } }
 +        else { [IO.File]::Move($temporary, $Path) }
 +    } finally { if ([IO.File]::Exists($temporary)) { [IO.File]::Delete($temporary) } }
 +}
