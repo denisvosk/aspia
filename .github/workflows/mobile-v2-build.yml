@@ -1,0 +1,107 @@
+name: Aspia+ Mobile 2.7.2-mobile.2 Android APK
+
+on:
+  push:
+    branches:
+      - feature/android-2.7.2-mobile2
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-v2-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+    working-directory: mobile-src
+
+concurrency:
+  group: aspia-mobile-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: '6.11.1'
+  VCPKG_MAX_CONCURRENCY: '4'
+  VCPKG_DISABLE_METRICS: '1'
+  GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: denisvosk/aspia
+          ref: ${{ github.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare pinned mobile source
+        working-directory: ${{ github.workspace }}
+        run: python mobile/prepare-source.py --output mobile-src
+      - name: Native build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config autoconf automake libtool nasm libgl1-mesa-dev libxkbcommon0 patchelf
+          python -m pip install 'aqtinstall==3.3.0' 'cmake>=3.30,<4.0'
+      - name: Cache Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/Qt
+          key: mobile-qt-${{ runner.os }}-${{ env.QT_VERSION }}-android-arm64-v1
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt" --archives qtbase qttools qtsvg qttranslations qtdeclarative icu
+          aqt install-qt all_os android "$QT_VERSION" android_arm64_v8a -O "$RUNNER_TEMP/Qt" --archives qtbase qttools qtsvg qttranslations
+      - name: Android SDK
+        run: |
+          python - <<'PYSDK'
+          import subprocess
+          subprocess.run(['sdkmanager', 'platform-tools', 'platforms;android-36', 'build-tools;36.0.0', 'ndk;27.2.12479018'], input='y\n' * 100, text=True, stdout=subprocess.DEVNULL, check=True)
+          PYSDK
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "QT_ANDROID_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/android_arm64_v8a" >> "$GITHUB_ENV"
+          echo "QT_HOST_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
+      - name: Cache compiled dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: mobile-vcpkg-${{ runner.os }}-${{ hashFiles('mobile-src/.gitmodules', 'mobile-src/vcpkg.json') }}-ndk27-qt6111-v1
+          restore-keys: mobile-vcpkg-${{ runner.os }}-
+      - name: Build Android HTTPS runtime
+        run: |
+          ci/build-android-openssl.sh "$RUNNER_TEMP/android-openssl"
+          echo "ASPIA_ANDROID_TLS_DIR=$RUNNER_TEMP/android-openssl" >> "$GITHUB_ENV"
+      - name: Configure Client only
+        run: cmake --preset mobile-android-linux
+      - name: Build APK
+        run: cmake --build --preset mobile-android-linux-apk --parallel 4
+      - name: Collect unsigned release artifact
+        run: |
+          mkdir -p mobile-artifacts
+          APK=$(find builds/mobile-android-linux/source/client/android-build/build/outputs/apk/release -name '*unsigned.apk' -print -quit)
+          test -n "$APK"
+          cp "$APK" mobile-artifacts/aspia-plus-mobile-2.7.2-mobile.2-arm64-unsigned.apk
+          git -C "$GITHUB_WORKSPACE" rev-parse HEAD > mobile-artifacts/source-commit.txt
+          git rev-parse HEAD > mobile-artifacts/upstream-commit.txt
+          cp "$GITHUB_WORKSPACE/mobile/source-lock.json" mobile-artifacts/source-lock.json
+          (cd mobile-artifacts && sha256sum *.apk > SHA256SUMS.txt)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aspia-plus-mobile-android-arm64
+          path: mobile-src/mobile-artifacts
+          retention-days: 30
+          if-no-files-found: error
