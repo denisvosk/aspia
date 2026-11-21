@@ -1,0 +1,98 @@
+name: Aspia+ Mobile startup smoke test
+
+on:
+  push:
+    branches: ['debug/mobile-startup']
+    paths:
+      - '.github/workflows/mobile-startup-smoke.yml'
+      - 'mobile/ci-startup-smoke.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: aspia-mobile-startup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-startup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      ANDROID_AVD_HOME: ${{ runner.temp }}/aspia-smoke-avd
+      ANDROID_EMULATOR_HOME: ${{ runner.temp }}/aspia-smoke-emulator
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the original mobile.2 build
+        uses: actions/download-artifact@v4
+        with:
+          name: aspia-plus-mobile-android-arm64
+          run-id: 44958374594
+          github-token: ${{ github.token }}
+          path: original-apk
+      - name: Verify the original artifact checksum
+        working-directory: original-apk
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Provide Android command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Install emulator and Android 12 image
+        shell: bash
+        run: |
+          python - <<'PY'
+          import subprocess
+          subprocess.run([
+              'sdkmanager', 'platform-tools', 'platforms;android-36',
+              'build-tools;36.0.0', 'emulator',
+              'system-images;android-31;google_apis;x86_64'
+          ], input='y\n' * 100, text=True, check=True)
+          PY
+      - name: Enable KVM on the ephemeral runner
+        shell: bash
+        run: |
+          test -c /dev/kvm
+          sudo chmod 666 /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+      - name: Create an empty virtual phone
+        shell: bash
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME" "$ANDROID_EMULATOR_HOME"
+          python - <<'PY'
+          import subprocess
+          subprocess.run([
+              'avdmanager', 'create', 'avd', '--force',
+              '--name', 'aspia-startup-api31', '--device', 'pixel_2',
+              '--package', 'system-images;android-31;google_apis;x86_64'
+          ], input='no\n', text=True, check=True)
+          PY
+      - name: Launch unchanged ARM64 code and observe for 60 seconds
+        shell: bash
+        run: |
+          python mobile/ci-startup-smoke.py \
+            --sdk-root "$ANDROID_HOME" \
+            --apk original-apk/aspia-plus-mobile-2.7.2-mobile.2-arm64-unsigned.apk \
+            --avd aspia-startup-api31 \
+            --output startup-evidence \
+            --boot-timeout 600 \
+            --observe-seconds 60
+      - name: Upload startup evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspia-mobile2-api31-startup-evidence
+          path: startup-evidence
+          retention-days: 14
+          if-no-files-found: warn
