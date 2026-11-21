@@ -19,6 +19,7 @@ jobs:
         with:
           packages: ''
       - run: sdkmanager 'build-tools;36.0.0'
+      - run: sudo apt-get update -qq && sudo apt-get install -y libc++1 libc++abi1
       - name: Package Android SDK official APK utilities
         run: |
           set -euo pipefail
@@ -26,6 +27,8 @@ jobs:
           cp "$ANDROID_HOME/build-tools/36.0.0/apksigner" apk-signing-tools/
           cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" apk-signing-tools/
           cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" apk-signing-tools/lib/
+          cp -L "$(ldconfig -p | awk '/libc\\+\\+\\.so\\.1 /{print $NF;exit}')" apk-signing-tools/lib/libc++.so.1
+          cp -L "$(ldconfig -p | awk '/libc\\+\\+abi\\.so\\.1 /{print $NF;exit}')" apk-signing-tools/lib/libc++abi.so.1
           test -s apk-signing-tools/lib/apksigner.jar
       - uses: actions/upload-artifact@v4
         with:
