@@ -42,6 +42,12 @@ def main() -> int:
         raise RuntimeError("Upstream tag does not match the pinned source commit; patch not applied.")
     run("git", "apply", "--check", str(patch), cwd=output)
     run("git", "apply", str(patch), cwd=output)
+    overlay = bundle / "upgrade-mobile-v2.py"
+    if not overlay.is_file():
+        raise RuntimeError("Missing Mobile v2 source overlay")
+    if hashlib.sha256(overlay.read_bytes()).hexdigest() != lock["overlay_sha256"]:
+        raise RuntimeError("Mobile v2 source overlay SHA-256 mismatch")
+    run(sys.executable, str(overlay), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
