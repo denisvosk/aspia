@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.1",
-  "version_code": 20702001,
+  "version": "2.7.2-mobile.2",
+  "version_code": 20702002,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -15,6 +15,8 @@
   "ndk_version": "27.2.12479018",
   "jdk_version": "21",
   "release_date": "2026-11-22",
-  "apk_sha256": "b228109b662df3b4f63e489373b4dc86afba0f9dfbfeece9959a6b670773cd60",
-  "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c"
+  "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
+  "overlay_file": "upgrade-mobile-v2.py",
+  "overlay_sha256": "2fce57e2cc6324001783ad5b9450d9e2cbfd7809779565fbc9e1da325ec7b138",
+  "build_state": "APK pending compilation and signing"
 }
