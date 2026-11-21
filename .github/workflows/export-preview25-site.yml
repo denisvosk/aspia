@@ -6,7 +6,7 @@ on:
       - ops/export-preview25-site
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   export-site:
