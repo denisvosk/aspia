@@ -860,7 +860,7 @@ index 0000000000000000000000000000000000000000..c74fa8297cc7d036b1473dbf0611ed1e
 +sha256sum "$output_apk"
 diff --git a/ops/mobile/Install-Mobile-Book.ps1 b/ops/mobile/Install-Mobile-Book.ps1
 new file mode 100644
-index 0000000000000000000000000000000000000000..559d20b7e9b844e4899261af824516185fb1b33a
+index 0000000000000000000000000000000000000000..3e4d0b09e33ee2bfda941ac2a6a831862ec5491a
 --- /dev/null
 +++ b/ops/mobile/Install-Mobile-Book.ps1
 @@ -0,0 +1,208 @@
@@ -979,7 +979,7 @@ index 0000000000000000000000000000000000000000..559d20b7e9b844e4899261af82451618
 +    try { $generator.GetBytes($random) } finally { $generator.Dispose() }
 +    $newPassword = [Convert]::ToBase64String($random).Replace('+','-').Replace('/','_').TrimEnd('=')
 +    [Array]::Clear($random, 0, $random.Length)
-+    $hashResult = Invoke-BookProcess $CaddyPath @('hash-password', '--algorithm', 'bcrypt') -InputText ($newPassword + [Environment]::NewLine)
++    $hashResult = Invoke-BookProcess $CaddyPath @('hash-password', '--algorithm', 'bcrypt') -InputText ($newPassword + "`n")
 +    if ($hashResult.ExitCode -ne 0) { throw 'Caddy could not hash the new access password.' }
 +    $passwordHash = $hashResult.Output.Trim()
 +}
