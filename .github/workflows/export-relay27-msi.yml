@@ -1,0 +1,52 @@
+name: Export official Aspia 2.7.0 Relay installers
+
+on:
+  push:
+    branches:
+      - ops/export-preview25-site
+    paths:
+      - .github/workflows/export-relay27-msi.yml
+
+permissions:
+  contents: read
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download original Relay 2.7.0 MSI assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p relay-files
+          gh release download v2.7.0 --repo dchapyshev/aspia \
+            --pattern 'aspia-relay-2.7.0-*.msi' \
+            --dir relay-files
+          python3 - <<'PY'
+          import os, hashlib, pathlib
+          root = pathlib.Path("relay-files")
+          items = {
+              "aspia-relay-2.7.0-x86.msi": 2654208,
+              "aspia-relay-2.7.0-x86_64.msi": 3043328,
+          }
+          assert {p.name for p in root.iterdir()} == set(items)
+          checks = []
+          for name, size in items.items():
+              data = (root / name).read_bytes()
+              assert len(data) == size, f"Bad size: {name}"
+              assert data.startswith(bytes.fromhex("d0cf11e0a1b11ae1")), f"Not MSI: {name}"
+              checks.append(f"{hashlib.sha256(data).hexdigest()}  {name}")
+          (root / "SHA256SUMS-relay-2.7.0.txt").write_text("\\n".join(checks) + "\\n")
+          print("\\n".join(checks))
+          PY
+
+      - name: Attach Relay MSI downloads
+        uses: actions/upload-artifact@v4
+        with:
+          name: Aspia-Relay-2.7.0-official-Windows-x86-x64
+          path: relay-files/
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
