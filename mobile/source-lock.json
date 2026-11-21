@@ -17,6 +17,7 @@
   "release_date": "2026-11-22",
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
-  "overlay_sha256": "2fce57e2cc6324001783ad5b9450d9e2cbfd7809779565fbc9e1da325ec7b138",
-  "build_state": "APK pending compilation and signing"
+  "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
+  "build_state": "APK pending compilation and signing",
+  "book_transfer": "local_aab_only"
 }
