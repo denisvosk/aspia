@@ -9,7 +9,7 @@
   "upstream_tag": "v3.0.37",
   "upstream_commit": "68e2fc9e05aff6c874b2cc32132978e859a0291f",
   "patch_file": "aspia-mobile-2.7.2.patch",
-  "patch_sha256": "18486c1be7d0695d0246d1544c028fe12a4d5ebbf176f67b73a05caae82a0548",
+  "patch_sha256": "1200398577c0cb57f92effc73f097ae8e182c126a60b900cfaa095285f58d208",
   "vcpkg_commit": "2f9d9056eb90bd8f735e41b966c5203644bdd538",
   "qt_version": "6.11.1",
   "ndk_version": "27.2.12479018",
