@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.2",
-  "version_code": 20702002,
+  "version": "2.7.2-mobile.3",
+  "version_code": 20702003,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,8 +18,8 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Signed Android APK produced; SDK signature and ABI verified; real-device testing pending",
+  "build_state": "Startup fix prepared; final APK and Android runtime validation in progress",
   "book_transfer": "local_aab_only",
-  "apk_sha256": "3b6505bb5d82befd0630f91609a5d0325fafdb73b00c9d242de7a822a2bbfa2f",
-  "build_run_id": 44958374594
+  "startup_fix_file": "startup-fix.patch",
+  "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44"
 }

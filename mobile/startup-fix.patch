@@ -1,0 +1,230 @@
+diff --git a/ci/build-android-openssl.sh b/ci/build-android-openssl.sh
+--- a/ci/build-android-openssl.sh
++++ b/ci/build-android-openssl.sh
+@@ -18,8 +18,8 @@
+ fi
+ archive_path=$(realpath "$archive_path")
+ printf '%s  %s\n' c5524dd6bfaa8e8ff0f1be885c390d14f3ff0bd2de62a7311b65fcbb75cb7546 "$archive_path" | sha256sum --check
+-command -v patchelf > /dev/null
+-source_dir="$output_dir/openssl-source"
++# Keep old post-processed outputs/build files separate from the native-SONAME build.
++source_dir="$output_dir/openssl-source-native-soname"
+ mkdir -p "$source_dir"
+ if [[ ! -f "$source_dir/Configure" ]]; then
+     tar -xf "$archive_path" -C "$source_dir" --strip-components=1
+@@ -27,17 +27,23 @@
+ export PATH="$ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH"
+ export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
+ cd "$source_dir"
+-if [[ ! -f Makefile ]]; then
+-    ./Configure shared android-arm64 -D__ANDROID_API__=31 no-tests no-apps \
+-        '-Wl,-z,max-page-size=16384'
+-fi
+-make -j"${ASPIA_BUILD_JOBS:-4}" SHLIB_VERSION_NUMBER= build_libs
+-cp libcrypto.so "$output_dir/libcrypto_3.so"
+-cp libssl.so "$output_dir/libssl_3.so"
+-patchelf --set-soname libcrypto_3.so "$output_dir/libcrypto_3.so"
+-patchelf --set-soname libssl_3.so "$output_dir/libssl_3.so"
+-for old_name in libcrypto.so libcrypto.so.3; do
+-    patchelf --replace-needed "$old_name" libcrypto_3.so "$output_dir/libssl_3.so"
+-done
++# Let OpenSSL and the linker produce the suffixed filenames, SONAMEs, dependency
++# names and version tables together. Post-link patchelf rewriting produced a
++# PT_LOAD whose file offset and virtual address were not page-congruent; Android
++# then mapped .dynstr incorrectly and aborted before the application's main().
++cat > Configurations/99-aspia-android.conf <<'OPENSSL_TARGET'
++my %targets = (
++    "aspia-android-arm64" => {
++        inherit_from => [ "android-arm64" ],
++        shlib_variant => "_3",
++        shared_extension => ".so",
++    },
++);
++OPENSSL_TARGET
++./Configure shared aspia-android-arm64 -D__ANDROID_API__=31 no-tests no-apps \
++    '-Wl,-z,max-page-size=16384'
++make -j"${ASPIA_BUILD_JOBS:-4}" build_libs
++cp libcrypto_3.so "$output_dir/libcrypto_3.so"
++cp libssl_3.so "$output_dir/libssl_3.so"
+ cp LICENSE.txt "$output_dir/OpenSSL-LICENSE.txt"
+ # Generated native libraries contain no credentials or private signing material.
+diff --git a/ci/check-android-apk.py b/ci/check-android-apk.py
+--- a/ci/check-android-apk.py
++++ b/ci/check-android-apk.py
+@@ -3,7 +3,8 @@
+ 
+ Uses Android SDK aapt/apksigner/zipalign and NDK llvm-readelf. No signing key is
+ read. A passing report verifies package metadata, signature, native dependency
+-closure and 16 KiB alignment; it does not verify device UI or remote sessions.
++closure and ELF load alignment; it does not verify device UI or remote sessions.
++--unsigned is an explicit pre-signing CI mode and never verifies a signature.
+ """
+ # SPDX-License-Identifier: GPL-3.0-or-later
+ 
+@@ -152,12 +153,25 @@
+     segments = library["load_segments"]
+     if not segments:
+         errors.append("No PT_LOAD segments")
+-    for segment in segments:
++    for index, segment in enumerate(segments):
+         alignment = segment["alignment"]
+         if alignment < PAGE_SIZE or alignment & (alignment - 1):
+             errors.append(f"PT_LOAD alignment {alignment} is below 16 KiB or not a power of two")
+-        if (segment["offset"] - segment["virtual_address"]) % PAGE_SIZE:
+-            errors.append("PT_LOAD offset and virtual address are not congruent modulo 16 KiB")
++        # Checking p_align alone or readelf -V is insufficient. A patchelf-created
++        # LOAD in mobile.2 had p_align=64 KiB but p_offset=0x5774e8 and
++        # p_vaddr=0x590000. Android mapped .dynstr at the wrong byte offset and
++        # reported an apparently missing verneed dependency ("_meth_data").
++        # ELF gABI: https://gabi.xinuos.com/elf/08-pheader.html
++        delta = segment["offset"] - segment["virtual_address"]
++        incongruent = [label for size, label in ((4096, "4 KiB"), (PAGE_SIZE, "16 KiB"))
++                       if delta % size]
++        if alignment > 1 and delta % alignment:
++            incongruent.append(f"p_align ({alignment:#x})")
++        if incongruent:
++            errors.append(
++                f"PT_LOAD[{index}] p_offset={segment['offset']:#x} "
++                f"p_vaddr={segment['virtual_address']:#x} are not congruent modulo "
++                + ", ".join(incongruent))
+     return errors
+ 
+ 
+@@ -214,6 +228,32 @@
+     assert library["needed"] == ["libc.so"] and not native_errors(library)
+     library["load_segments"][0]["alignment"] = 4096
+     assert native_errors(library)
++    elf_fixture = (
++        "  Class: ELF64\n  Machine: AArch64\n"
++        "  LOAD 0x580000 0x590000 0x590000 0x20000 0x20000 RW 0x10000\n"
++        "  0x000000000000000e (SONAME) Library soname: [libcrypto_3.so]\n"
++        "  0x0000000000000001 (NEEDED) Shared library: [libc.so]\n"
++        "  0x000000006ffffffe (VERNEED) 0x269e0\n"
++        "  0x000000006fffffff (VERNEEDNUM) 1\n"
++        "Version needs section '.gnu.version_r' contains 1 entry:\n"
++        "  0x0000: Version: 1  File: libc.so  Cnt: 1\n"
++        "  0x0010:   Name: LIBC  Flags: none  Version: 2\n")
++    def fixture_errors(fixture):
++        parsed = parse_elf(fixture)
++        parsed["name"] = "libcrypto_3.so"
++        return native_errors(parsed)
++    assert not fixture_errors(elf_fixture)
++    assert not fixture_errors(elf_fixture.replace(
++        "LOAD 0x580000 0x590000", "LOAD 0x5804e8 0x5904e8"))
++    # Regression: exact bad LOAD from the APK that failed on Android 12.
++    # Its DT_NEEDED and on-disk version names still looked correct.
++    broken_load = elf_fixture.replace("LOAD 0x580000", "LOAD 0x5774e8")
++    bad_errors = fixture_errors(broken_load)
++    assert any("4 KiB" in error and "16 KiB" in error and "p_align" in error
++               for error in bad_errors)
++    # 16 KiB congruence can still violate a declared 64 KiB p_align.
++    assert any("p_align" in error for error in fixture_errors(
++        elf_fixture.replace("LOAD 0x580000", "LOAD 0x584000")))
+     descriptor = b"Lorg/aspia/client/BiometricGate;"
+     dex = bytearray(152)
+     dex[:8] = b"dex\n039\x00"
+@@ -233,7 +273,10 @@
+ def main():
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--apk", type=Path)
+-    parser.add_argument("--expected-cert-sha256")
++    signing = parser.add_mutually_exclusive_group()
++    signing.add_argument("--expected-cert-sha256")
++    signing.add_argument("--unsigned", action="store_true",
++                         help="Pre-signing CI mode: skip signature verification only")
+     parser.add_argument("--sdk-root", type=Path,
+                         default=os.environ.get("ANDROID_SDK_ROOT") or os.environ.get("ANDROID_HOME"))
+     parser.add_argument("--ndk-root", type=Path, default=os.environ.get("ANDROID_NDK_HOME"))
+@@ -249,11 +292,16 @@
+     args = parser.parse_args()
+     if args.self_test:
+         return self_test()
+-    if not args.apk or not args.expected_cert_sha256 or not args.sdk_root:
+-        parser.error("--apk, --expected-cert-sha256 and --sdk-root are required")
++    if not args.apk or not args.sdk_root:
++        parser.error("--apk and --sdk-root are required")
++    if not args.unsigned and not args.expected_cert_sha256:
++        parser.error("--expected-cert-sha256 is required unless --unsigned is explicitly selected")
+ 
+     report = {"passed": False, "scope": "APK package validation only; no device or remote-session test",
+-              "apk": args.apk.name, "checks": [], "libraries": []}
++              "apk": args.apk.name, "unsigned": args.unsigned, "signature_verified": False,
++              "checks": [], "libraries": []}
++    if args.unsigned:
++        report["scope"] += "; unsigned CI mode, signature NOT verified"
+ 
+     def check(name, action):
+         try:
+@@ -265,14 +313,15 @@
+     try:
+         if not args.apk.is_file():
+             raise FileNotFoundError("The APK file does not exist")
+-        expected_cert = normalize_fingerprint(args.expected_cert_sha256)
++        expected_cert = (normalize_fingerprint(args.expected_cert_sha256)
++                         if not args.unsigned else None)
+         report["size_bytes"] = args.apk.stat().st_size
+         with args.apk.open("rb") as stream:
+             report["sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+         sdk_root = Path(args.sdk_root)
+         build_tools = sdk_root / "build-tools" / args.build_tools_version
+         aapt = tool_path(build_tools, "aapt")
+-        apksigner = tool_path(build_tools, "apksigner")
++        apksigner = tool_path(build_tools, "apksigner") if not args.unsigned else None
+         zipalign = tool_path(build_tools, "zipalign")
+         readelf = readelf_path(args)
+ 
+@@ -298,10 +347,15 @@
+                 raise ValueError("APK signer certificate differs from the expected single signer")
+             if not any(signatures["schemes"].get(name) for name in ("v2", "v3", "v3.1")):
+                 raise ValueError("No verified APK Signature Scheme v2/v3 signature")
++            report["signature_verified"] = True
+             return signatures
+ 
+         check("manifest_and_abi", metadata_check)
+-        check("release_signature", signature_check)
++        if args.unsigned:
++            report["checks"].append({"name": "release_signature", "passed": None,
++                                     "skipped": True, "reason": "Explicit --unsigned CI mode"})
++        else:
++            check("release_signature", signature_check)
+         check("zipalign_16k", lambda: {
+             "verified": bool(run_tool([zipalign, "-c", "-P", "16", "-v", "4", args.apk]) is not None)})
+ 
+@@ -378,7 +432,8 @@
+     except Exception as error:
+         report["checks"].append({"name": "checker_setup", "passed": False, "error": str(error)})
+ 
+-    report["passed"] = bool(report["checks"]) and all(check["passed"] for check in report["checks"])
++    report["passed"] = bool(report["checks"]) and all(
++        check.get("skipped", False) or check["passed"] for check in report["checks"])
+     output = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
+     if args.output:
+         args.output.parent.mkdir(parents=True, exist_ok=True)
+diff --git a/CMakePresets.json b/CMakePresets.json
+--- a/CMakePresets.json
++++ b/CMakePresets.json
+@@ -235,8 +235,8 @@
+         "ASPIA_CLIENT_ONLY": "ON",
+         "ASPIA_MOBILE_PACKAGE_NAME": "org.aspiaplus.client",
+         "ASPIA_MOBILE_APP_NAME": "Aspia+ Mobile",
+-        "ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.2",
+-        "ASPIA_MOBILE_VERSION_CODE": "20702002"
++        "ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.3",
++        "ASPIA_MOBILE_VERSION_CODE": "20702003"
+       },
+       "environment": {
+         "VCPKG_DEFAULT_HOST_TRIPLET": "x64-linux"
+diff --git a/source/client/CMakeLists.txt b/source/client/CMakeLists.txt
+--- a/source/client/CMakeLists.txt
++++ b/source/client/CMakeLists.txt
+@@ -253,8 +253,8 @@
+ if (ANDROID)
+     set(ASPIA_MOBILE_PACKAGE_NAME "org.aspiaplus.client" CACHE STRING "Android application ID")
+     set(ASPIA_MOBILE_APP_NAME "Aspia+ Mobile" CACHE STRING "Android application name")
+-    set(ASPIA_MOBILE_VERSION_CODE "20702002" CACHE STRING "Monotonically increasing APK version")
+-    set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.2" CACHE STRING "APK release version")
++    set(ASPIA_MOBILE_VERSION_CODE "20702003" CACHE STRING "Monotonically increasing APK version")
++    set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.3" CACHE STRING "APK release version")
+     target_compile_definitions(aspia_client_core PUBLIC
+         ASPIA_MOBILE_VERSION_STRING="${ASPIA_MOBILE_VERSION_NAME}")
+     set(ASPIA_ANDROID_TLS_DIR "$ENV{ASPIA_ANDROID_TLS_DIR}" CACHE PATH "Directory containing Qt Android OpenSSL shared libraries")

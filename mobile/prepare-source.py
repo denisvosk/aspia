@@ -48,11 +48,16 @@ def main() -> int:
     if hashlib.sha256(overlay.read_bytes()).hexdigest() != lock["overlay_sha256"]:
         raise RuntimeError("Mobile v2 source overlay SHA-256 mismatch")
     run(sys.executable, str(overlay), str(output), cwd=output)
+    startup_fix = bundle / lock["startup_fix_file"]
+    if hashlib.sha256(startup_fix.read_bytes()).hexdigest() != lock["startup_fix_sha256"]:
+        raise RuntimeError("Mobile startup fix SHA-256 mismatch")
+    run("git", "apply", "--check", str(startup_fix), cwd=output)
+    run("git", "apply", str(startup_fix), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
-    print(f"Complete Aspia+ Mobile source is ready: {output}")
-    print("Build instructions: ci/mobile-tests and .github/workflows/mobile-android.yml")
+    print(f"Complete Aspia+ Mobile {lock['version']} source is ready: {output}")
+    print("Build instructions: ci/mobile-tests and .github/workflows/mobile-v3-build.yml in the release repository")
     return 0
 
 
