@@ -18,6 +18,8 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "APK pending compilation and signing",
-  "book_transfer": "local_aab_only"
+  "build_state": "Signed Android APK produced; SDK signature and ABI verified; real-device testing pending",
+  "book_transfer": "local_aab_only",
+  "apk_sha256": "3b6505bb5d82befd0630f91609a5d0325fafdb73b00c9d242de7a822a2bbfa2f",
+  "build_run_id": 44958374594
 }
