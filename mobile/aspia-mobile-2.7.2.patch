@@ -295,10 +295,10 @@ index 0000000000000000000000000000000000000000..bc4e43b333e3e4b4ac9a6f57d6ff5acf
 +# Generated native libraries contain no credentials or private signing material.
 diff --git a/ci/check-android-apk.py b/ci/check-android-apk.py
 new file mode 100644
-index 0000000000000000000000000000000000000000..ed1c7b805671f0b918d7320008286a979c0ce11b
+index 0000000000000000000000000000000000000000..7a7f18b73883bebd985b85e636a94129bddc600f
 --- /dev/null
 +++ b/ci/check-android-apk.py
-@@ -0,0 +1,309 @@
+@@ -0,0 +1,391 @@
 +#!/usr/bin/env python3
 +"""Verify an Aspia+ Mobile release APK as a package, not as a running Android app.
 +
@@ -315,6 +315,7 @@ index 0000000000000000000000000000000000000000..ed1c7b805671f0b918d7320008286a97
 +import os
 +from pathlib import Path
 +import re
++import struct
 +import subprocess
 +import tempfile
 +import zipfile
@@ -331,6 +332,60 @@ index 0000000000000000000000000000000000000000..ed1c7b805671f0b918d7320008286a97
 +    "libz.so",
 +})
 +PAGE_SIZE = 16 * 1024
++REQUIRED_JAVA_CLASSES = frozenset({
++    "Lorg/aspia/client/ClientActivity;",
++    "Lorg/aspia/client/BiometricGate;",
++    "Lorg/aspia/client/SessionKeeperService;",
++})
++
++
++def parse_dex_defined_classes(data):
++    """Read class_defs descriptors, rather than accepting mere DEX references."""
++    if len(data) < 112 or not re.fullmatch(rb"dex\n[0-9]{3}\x00", data[:8]):
++        raise ValueError("Invalid DEX header")
++
++    def uint32(offset):
++        if offset < 0 or offset + 4 > len(data):
++            raise ValueError("DEX offset is outside the file")
++        return struct.unpack_from("<I", data, offset)[0]
++
++    if uint32(40) != 0x12345678:
++        raise ValueError("Unsupported DEX byte order")
++
++    def table(header_offset, record_size):
++        count, offset = uint32(header_offset), uint32(header_offset + 4)
++        if offset + count * record_size > len(data):
++            raise ValueError("DEX table is outside the file")
++        return count, offset
++
++    string_count, strings_offset = table(56, 4)
++    type_count, types_offset = table(64, 4)
++    class_count, classes_offset = table(96, 32)
++    descriptors = set()
++    for index in range(class_count):
++        type_index = uint32(classes_offset + index * 32)
++        if type_index >= type_count:
++            raise ValueError("DEX class type index is outside type_ids")
++        string_index = uint32(types_offset + type_index * 4)
++        if string_index >= string_count:
++            raise ValueError("DEX descriptor index is outside string_ids")
++        offset = uint32(strings_offset + string_index * 4)
++        # Skip the ULEB128 UTF-16 length. Required class names are ASCII, so
++        # no modified-UTF-8 conversion is needed when matching descriptors.
++        for _ in range(5):
++            if offset >= len(data):
++                raise ValueError("Truncated DEX string length")
++            value = data[offset]
++            offset += 1
++            if value < 0x80:
++                break
++        else:
++            raise ValueError("Invalid DEX string length")
++        end = data.find(b"\x00", offset)
++        if end < 0:
++            raise ValueError("Unterminated DEX descriptor")
++        descriptors.add(data[offset:end].decode("ascii", errors="replace"))
++    return descriptors
 +
 +
 +def parse_badging(text):
@@ -460,6 +515,18 @@ index 0000000000000000000000000000000000000000..ed1c7b805671f0b918d7320008286a97
 +    assert library["needed"] == ["libc.so"] and not native_errors(library)
 +    library["load_segments"][0]["alignment"] = 4096
 +    assert native_errors(library)
++    descriptor = b"Lorg/aspia/client/BiometricGate;"
++    dex = bytearray(152)
++    dex[:8] = b"dex\n039\x00"
++    struct.pack_into("<I", dex, 40, 0x12345678)
++    struct.pack_into("<II", dex, 56, 1, 112)  # string_ids
++    struct.pack_into("<II", dex, 64, 1, 116)  # type_ids
++    struct.pack_into("<II", dex, 96, 1, 120)  # class_defs
++    struct.pack_into("<I", dex, 112, len(dex))
++    dex.extend(bytes([len(descriptor)]) + descriptor + b"\x00")
++    assert parse_dex_defined_classes(dex) == {descriptor.decode()}
++    struct.pack_into("<I", dex, 96, 0)  # A string reference alone is insufficient.
++    assert parse_dex_defined_classes(dex) == set()
 +    print(json.dumps({"passed": True, "scope": "checker parser fixtures only"}))
 +    return 0
 +
@@ -542,6 +609,21 @@ index 0000000000000000000000000000000000000000..ed1c7b805671f0b918d7320008286a97
 +        with zipfile.ZipFile(args.apk) as archive, tempfile.TemporaryDirectory(prefix="aspia-apk-elf-") as temporary:
 +            entries = archive.infolist()
 +            names = [entry.filename for entry in entries]
++
++            def java_classes_check():
++                definitions = set()
++                dex_files = []
++                for entry in entries:
++                    if re.fullmatch(r"classes(?:[2-9]|[1-9][0-9]+)?\.dex", entry.filename):
++                        classes = parse_dex_defined_classes(archive.read(entry))
++                        definitions.update(classes)
++                        dex_files.append({"file": entry.filename, "defined_classes": len(classes)})
++                missing = sorted(REQUIRED_JAVA_CLASSES - definitions)
++                if missing:
++                    raise ValueError("Required Java classes have no DEX definitions: " + ", ".join(missing))
++                return {"dex_files": dex_files, "required_definitions": sorted(REQUIRED_JAVA_CLASSES)}
++
++            check("custom_java_class_definitions", java_classes_check)
 +            duplicates = len(names) != len(set(names))
 +            native_entries = [entry for entry in entries if entry.filename.startswith("lib/") and
 +                              entry.filename.endswith(".so") and not entry.is_dir()]
@@ -741,7 +823,7 @@ index 0000000000000000000000000000000000000000..46f094bae201f7938eb1664416582d93
 +}
 diff --git a/ci/sign-android-apk.sh b/ci/sign-android-apk.sh
 new file mode 100755
-index 0000000000000000000000000000000000000000..6d193d18bec26a471b325c9abaf345c84a82ea47
+index 0000000000000000000000000000000000000000..c74fa8297cc7d036b1473dbf0611ed1e99351e5f
 --- /dev/null
 +++ b/ci/sign-android-apk.sh
 @@ -0,0 +1,31 @@
@@ -771,7 +853,7 @@ index 0000000000000000000000000000000000000000..6d193d18bec26a471b325c9abaf345c8
 +"$build_tools/zipalign" -P 16 -f 4 "$input_apk" "$aligned_apk"
 +"$build_tools/apksigner" sign \
 +    --ks "$key_file" --ks-key-alias aspia-plus-mobile \
-+    --ks-pass "file:$password_file" --key-pass "file:$password_file" \
++    --ks-pass "file:$password_file" \
 +    --out "$output_apk" "$aligned_apk"
 +"$build_tools/apksigner" verify --verbose --print-certs "$output_apk"
 +"$build_tools/zipalign" -c -P 16 4 "$output_apk"
