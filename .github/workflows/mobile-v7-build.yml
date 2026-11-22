@@ -43,10 +43,14 @@ jobs:
         with:
           python-version: '3.12'
       - name: Cache Gradle downloads for Mobile7 builds
-        uses: gradle/actions/setup-gradle@v6
+        uses: actions/cache@v4
         with:
-          cache-provider: basic
-          cache-read-only: false
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+          key: mobile7-gradle-${{ runner.os }}-qt6111-jdk21-${{ hashFiles('mobile/source-lock.json') }}-v1
+          restore-keys: |
+            mobile7-gradle-${{ runner.os }}-qt6111-jdk21-
       - name: Prepare pinned mobile source and startup fix
         working-directory: ${{ github.workspace }}
         run: python mobile/prepare-source.py --output mobile-src
