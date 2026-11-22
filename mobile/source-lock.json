@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.7",
-  "version_code": 20702007,
+  "version": "2.7.2-mobile.8",
+  "version_code": 20702008,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -14,11 +14,11 @@
   "qt_version": "6.11.1",
   "ndk_version": "27.2.12479018",
   "jdk_version": "21",
-  "release_date": "2026-11-22",
+  "release_date": "2026-11-23",
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile7 code committed; Android build and Samsung UX verification pending",
+  "build_state": "Mobile8 Samsung-style keyboard code prepared; Android CI and Samsung UX validation pending",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -31,9 +31,9 @@
   "picker_fix_file": "android-document-picker.patch",
   "picker_fix_sha256": "e5fe9d1f393d2e45411d754e3d41894605b497d7af16f9c7b4fb5b6ce8eba9f4",
   "previous_release": {
-    "version": "2.7.2-mobile.6",
-    "github_run_id": 45028428077,
-    "user_verified": "Samsung S10 Android 12: Host 2.7 works; lock/unlock stable; IME layout and clipboard need improvement"
+    "version": "2.7.2-mobile.7",
+    "github_run_id": 45066089999,
+    "user_verified": "Samsung S10 Android 12: connection/focus/gestures working; landscape keyboard too stretched and keys crowded; reference reduced Samsung."
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
   "controls_overlay_sha256": "aef96ebb94d435da8c38e354b87c2fc41b3990d5306daeda373af5809f611083",
@@ -47,5 +47,9 @@
   "mobile7_overlay_file": "mobile7-keyboard.py",
   "mobile7_overlay_sha256": "6e572d68c21c77270b3868b1074b1629d3f6145dc29c1fa3d5964dee9621f98b",
   "mobile7_test_file": "test_mobile7_keyboard.py",
-  "mobile7_test_sha256": "7d46bec8d072c7db2f03ff628090f9bd6beeb5bbecaf4342a78e154ed275fc17"
+  "mobile7_test_sha256": "7d46bec8d072c7db2f03ff628090f9bd6beeb5bbecaf4342a78e154ed275fc17",
+  "mobile8_overlay_file": "mobile8-polish.py",
+  "mobile8_overlay_sha256": "d1e1ae5af9898364006c507883bfe6a6b01ffeccd3c2a2f23c898b68fb0170f8",
+  "mobile8_test_file": "test_mobile8_keyboard.py",
+  "mobile8_test_sha256": "53b22c98c7bc6f7b62ca582c14cb94eb91cfce07f566f52bdb6b65386d4e02f9"
 }
