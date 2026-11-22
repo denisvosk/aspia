@@ -1,28 +1,39 @@
-# Aspia+ Mobile 2.7.2-mobile.8 — reduced Samsung keyboard
+# Aspia+ Mobile 2.7.2-mobile.9 — keyboard usability & nested Aspia typing
 
-Based on Samsung S10 Android 12 testing of the signed Mobile7. The old
-Host 2.7, Router, Relay, signing identity, local AAB, input and clipboard
-protocols remain unchanged. Mobile7 continues to be the rollback build.
+Based on Samsung S10 Android 12 feedback about Mobile8. Full install and live
+nested-client verification are still required after the CI smoke test.
 
-- App-local Qt Widgets keyboard, not a new Android IME. The keyboard opens
-  and closes with the existing **Клав.** control, retaining focus and zoom.
-- Reduced Samsung-like Russian/English layout: **1..0** digit row, 11-letter
-  RU rows, ordinary Shift and Backspace. Hold Е for Ё and Ь for Ъ (500 ms).
-- Bottom typing row: symbols, comma, **< Русский >** / English space, dot,
-  Enter. No duplicate Esc, Tab or navigation arrows inside the keyboard.
-- Portrait fills available width; landscape keys are **centered at 75%**
-  of the full width. The surrounding widget consumes touches safely.
-- More gaps between fingers and clearer key caps. No Samsung/Google
-  toolbar with emoji, microphone, settings, or suggestions.
-- Bottom Aspia control bar remains scrollable with the existing holdable
-  **ЛКМ**, **Клав.**, **Вставить**, Ctrl, Alt, Shift, etc.
-- The **Впис.** control is removed, to prevent accidental fit/zoom resets.
-  Rotation remains only in the floating three-dot menu.
-- On dark themes, the control bar now uses white text rather than Android's
-  blue accent. In light themes it uses the palette foreground (usually dark).
-- Desktop touch mapping, two-finger gestures, pan above keyboard, clipboard,
-  encryption, connection and resume after phone lock are unchanged.
+## Fixes
 
-Build: .github/workflows/mobile-v8-build.yml. Source invariants and the
-Android 12 emulator startup smoke are CI gates. Actual Samsung keyboard
-comfort, symbol display, Unicode and gestures still need device testing.
+- **Keyboard visual proportions:** reduced Samsung screenshot is the reference.
+  The number row is 80% of the height of the letter rows (and 15px font instead
+  of 17px). The caps remain charcoal grey, with visibly near-black (#080808)
+  gaps in dark theme. Landscape keyboard stays centered at 75% of available width.
+- **Backspace:** painted vector icon with arrow-shaped outline and X; no Unicode
+  glyph that appears as a missing-character rectangle on Samsung.
+- **KeyBar:** 33 logical px high versus 44px in Mobile8 (25% less); keys 28px
+  versus 32px, adjusted lower padding. Existing text **ЛКМ**, **Клав.**,
+  **Вставить**, modifiers and their behavior are preserved. «Впис.» stays out.
+- **Nested Aspia:** individual touch keys now use actual USB keyboard events
+  (Windows scan codes), which are suitable for Qt/remote clients that ignore
+  injected Unicode VK_PACKET. This includes letters and digits; unsupported
+  Unicode falls back to the existing TextEvent.
+- **Important language constraint:** physical keyboard input follows the
+  **active Windows keyboard layout**. When the phone keyboard displays Russian,
+  switch the remote Windows input layout to Russian too; when English, to
+  English. The phone cannot read the remote Windows layout through Aspia 2.7.
+- **Android clipboard paste:** «Вставить» still sends exact UTF-8 TextEvent,
+  not scancodes; useful for longer texts and text requiring exact Unicode.
+- Desktop image zoom, two-finger pan, press-and-hold LMB, keyboard opening
+  focus, Router/Relay/Host 2.7 wire protocol, book and keys are unchanged.
+
+## Validation
+
+`.github/workflows/mobile-v9-build.yml` checks existing Mobile5/6/9 source
+and APK, package identity and Android 12 emulator startup. **Automated CI
+cannot certify typing into a second Aspia client running inside a live remote
+Windows desktop.** This must be checked on the Samsung S10 using a nested
+session, both Russian and English Windows input layouts. The signed Mobile8
+installer remains available for rollback testing.
+
+Aspia+ is an unofficial Aspia fork under GPL-3.0.
