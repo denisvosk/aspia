@@ -123,7 +123,7 @@ QIcon backspaceIcon(bool dark)
          '    void onVirtualKeyboardText(const QString& text, bool russian_layout);')
     once(view_cc,
          '// Unicode goes as TextEvent; Ctrl/Alt/Win chords become physical USB keystrokes.',
-         '''// Touch keys use physical USB scan codes, not KEYEVENTF_UNICODE.
+         r'''// Touch keys use physical USB scan codes, not KEYEVENTF_UNICODE.
 // Windows delivers Unicode as VK_PACKET; nested Qt/Aspia clients may ignore
 // this event because the hardware scan code is empty. Normal text via
 // Android Clipboard retains the original Unicode path below.
