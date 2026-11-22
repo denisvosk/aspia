@@ -53,7 +53,7 @@
   "mobile8_test_file": "test_mobile8_keyboard.py",
   "mobile8_test_sha256": "572250fac78c89513250552bae55e7da4335693316c546434a8051997e1b99f6",
   "mobile9_overlay_file": "mobile9-fixes.py",
-  "mobile9_overlay_sha256": "f40bb30e235723c90dfe38d45fdc27533dd596b581b2e200471fabf9438d7bef",
+  "mobile9_overlay_sha256": "06590537d7562527c0fda9f8345b4a6bb0aef31806ed989304cc6b0b7ba07cc5",
   "mobile9_test_file": "test_mobile9_keyboard.py",
   "mobile9_test_sha256": "d53a75970e27b1e314d45a1ee5d60607c2b4ccacfabb2c4568e7861c64f6161f"
 }
