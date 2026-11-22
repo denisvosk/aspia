@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Bounded edge-pan correction source checks pending; no signed mobile.5 APK available",
+  "build_state": "Pinned controls overlay digest corrected; finite edge pan code/release pending CI build",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -37,7 +37,7 @@
     "user_verified": "Samsung S10 Android 12; local .aab imported; live desktop connection to old Host 2.7.0 succeeded"
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
-  "controls_overlay_sha256": "743aa2fbe736e77e0b59c64dd7446a5bc3dbe5c4cac35cc1dca22cfb1a6d90d5",
+  "controls_overlay_sha256": "9e251decc3042c8103e5e888b05bcf7f79813337e30f794b4734671031ef50e8",
   "edge_pan_overlay_file": "edge-pan-follow.py",
   "edge_pan_overlay_sha256": "fce4c788426e64f23ea81427d8eb12b13244ac99b93628fbb86eb7056e1268e9",
   "edge_pan_test_sha256": "a31d4eed5a6bddd0c4242b5b18a8534037fb9bd1f2f662c4cf3d00b16b89b637"
