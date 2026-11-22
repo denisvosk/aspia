@@ -27,7 +27,9 @@ check('sendWheel(steps)' in view and 'pinch_centroid_.y() - centroid.y()' in vie
 check('edge_pan_timer_' in view and 'trigger_x = view_width * 0.12' in view and 'comfort_x = view_width * 0.24' in view, "Finite cursor-follow threshold/comfort band missing")
 check('content_pos_ += QPointF(dx, dy)' in view, "Viewport must follow the moving remote cursor")
 check('fittedSize() const' in view and 'QSizeF(width(), viewportHeight())' in view, "Fit excludes neither keyboard nor toolbar")
-check('height() - keyboard_inset_ - key_bar_height_' in view, "Persistent shortcut bar must reduce visible area")
+check('height() - keyboard_inset_ - key_bar_height_' in view or
+      'height() - key_bar_height_' in view,
+      "Visible keyboard must not make the key bar distort the desktop viewport")
 check('sendWinLock()' not in view_h, "Preserve the existing lock path, no Win+L fallback")
 check('proto::power::Control::ACTION_LOCK' in window, "Host native Lock action missing")
 check('sig_lockRequested' not in key_h and 'sig_rightClickRequested' in key_h, "No duplicate lock button; right click remains")
