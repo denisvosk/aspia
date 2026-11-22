@@ -11,7 +11,7 @@
 
 **[Описание улучшений, ограничений и статуса сборок](ASPIA_PLUS_RELEASE_NOTES.md)** · [Версия Windows Preview](https://github.com/denisvosk/aspia/tree/feature/audit-inventory-2.7.2) · [Android Mobile 8](https://github.com/denisvosk/aspia/tree/feature/mobile8-samsung-keyboard) · [Releases](https://github.com/denisvosk/aspia/releases)
 
-**Важно:** автоматические проверки не заменяют тестирование на реальных машинах. Черновики Releases (Draft) не видны посетителям GitHub. Старый раздел README ниже сохранён для описания оригинального проекта.
+**Windows Preview 25 опубликован как [публичный prerelease](https://github.com/denisvosk/aspia/releases/tag/v2.7.2-audit-inventory-preview.25)**: доступны MSI x86/x64, исходники и контрольные суммы. Это не стабильный выпуск; сначала проверьте на тестовых компьютерах. Старые черновики (Draft) остаются скрыты. Mobile 8 пока распространяется отдельно как подписанный тестовый APK и не входит в этот Windows-релиз. Старый раздел README ниже сохранён для описания оригинального проекта.
 
 ---
 
