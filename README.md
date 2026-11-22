@@ -1,3 +1,20 @@
+# Aspia+ — неофициальная ветка Aspia 2.7
+
+**Этот репозиторий — независимая экспериментальная модификация [оригинальной Aspia](https://github.com/dchapyshev/aspia), а не официальный релиз её авторов.**
+
+Улучшения по сравнению с Aspia 2.7:
+
+- **Журнал подключений** с учётными записями Router/Host, временем сеансов и CSV-экспортом.
+- **Инвентаризация парка ПК**: новый Host отправляет аппаратные сводки, Console готовит HTML/CSV-отчёт.
+- **Файлы и папки через Ctrl+C / Ctrl+V** между двумя Windows-машинами в обе стороны; расширенный обмен форматированным текстом и изображениями.
+- **Aspia+ Mobile для Android 12+** с подключением к инфраструктуре Router/Relay/Host 2.7, русско-английской клавиатурой и прокручиваемой лентой команд.
+
+**[Описание улучшений, ограничений и статуса сборок](ASPIA_PLUS_RELEASE_NOTES.md)** · [Версия Windows Preview](https://github.com/denisvosk/aspia/tree/feature/audit-inventory-2.7.2) · [Android Mobile 8](https://github.com/denisvosk/aspia/tree/feature/mobile8-samsung-keyboard) · [Releases](https://github.com/denisvosk/aspia/releases)
+
+**Важно:** автоматические проверки не заменяют тестирование на реальных машинах. Черновики Releases (Draft) не видны посетителям GitHub. Старый раздел README ниже сохранён для описания оригинального проекта.
+
+---
+
 Aspia
 =====
 Remote desktop, file transfer and system information tool.
