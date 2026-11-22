@@ -1,37 +1,28 @@
-# Aspia+ Mobile 2.7.2-mobile.7 — compact app-only RU/EN keyboard
+# Aspia+ Mobile 2.7.2-mobile.8 — reduced Samsung keyboard
 
-Built on user-tested mobile.6 with **unchanged** 2.7 Router, Relay, Host,
-local encrypted address book and the signing certificate.
+Based on Samsung S10 Android 12 testing of the signed Mobile7. The old
+Host 2.7, Router, Relay, signing identity, local AAB, input and clipboard
+protocols remain unchanged. Mobile7 continues to be the rollback build.
 
-- The existing horizontal KeyBar is permanently anchored to the **bottom
-  of the display**, whether the keyboard is open or closed. It never
-  relocates to a narrow left rail.
-- A separate `CompactKeyboard` QWidget module expands directly **above**
-  the bottom bar, across the full width. Includes RU/EN ЙЦУКЕН/QWERTY,
-  Ё/ё, number row (NOT a numpad), punctuation and symbols,
-  Shift, language switch, Enter, Backspace. In landscape, extra
-  Esc, Tab and arrow keys appear within the keyboard.
-- No Samsung/Gboard/Yandex IME or system keyboard toolbar is shown for
-  normal remote typing. No phone keyboard settings are changed.
-- Text is forwarded using Aspia's existing legacy-compatible
-  UTF-8 TextEvent and USB KeyEvent paths.
-- «Повор.» removed from the shortcut bar; only available from three dots.
-  Swipe-scrolling the bar suppresses accidental button clicks while moving
-  and briefly after the scroll stops. Dedicated holdable LMB remains.
-- Text copied in another Android app can be transferred with «Вставить»
-  (direct remote TextEvent). Android clipboard is also rechecked
-  when the application returns to foreground and on connection.
-- Showing the custom keyboard does not refit the remote image. After
-  intentional pointer movement, a bounded pan uses the visible area
-  above keyboard + KeyBar, making bottom-screen fields reachable.
+- App-local Qt Widgets keyboard, not a new Android IME. The keyboard opens
+  and closes with the existing **Клав.** control, retaining focus and zoom.
+- Reduced Samsung-like Russian/English layout: **1..0** digit row, 11-letter
+  RU rows, ordinary Shift and Backspace. Hold Е for Ё and Ь for Ъ (500 ms).
+- Bottom typing row: symbols, comma, **< Русский >** / English space, dot,
+  Enter. No duplicate Esc, Tab or navigation arrows inside the keyboard.
+- Portrait fills available width; landscape keys are **centered at 75%**
+  of the full width. The surrounding widget consumes touches safely.
+- More gaps between fingers and clearer key caps. No Samsung/Google
+  toolbar with emoji, microphone, settings, or suggestions.
+- Bottom Aspia control bar remains scrollable with the existing holdable
+  **ЛКМ**, **Клав.**, **Вставить**, Ctrl, Alt, Shift, etc.
+- The **Впис.** control is removed, to prevent accidental fit/zoom resets.
+  Rotation remains only in the floating three-dot menu.
+- On dark themes, the control bar now uses white text rather than Android's
+  blue accent. In light themes it uses the palette foreground (usually dark).
+- Desktop touch mapping, two-finger gestures, pan above keyboard, clipboard,
+  encryption, connection and resume after phone lock are unchanged.
 
-**Module choice:** investigated official Qt Virtual Keyboard (GPLv3) and
-CuteKeyboard (MIT, RU/EN, Qt6), but both require QtQuick/QML and an input
-context plugin while the current Android Client is Qt Widgets-only.
-For the narrow remote input task this release keeps a self-contained
-Qt Widgets module and reuses the already working Aspia 2.7 input events.
-
-`.github/workflows/mobile-v7-build.yml` checks hashes, source invariants,
-builds ARM64, validates APK and smoke tests Android 12. Samsung S10
-multitouch/IME, Unicode and clipboard remain **device tests**; keep the
-working signed Mobile6 installer as a rollback.
+Build: .github/workflows/mobile-v8-build.yml. Source invariants and the
+Android 12 emulator startup smoke are CI gates. Actual Samsung keyboard
+comfort, symbol display, Unicode and gestures still need device testing.
