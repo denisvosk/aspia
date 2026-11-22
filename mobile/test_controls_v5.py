@@ -23,7 +23,7 @@ check('sendClick(proto::input::MouseEvent::RIGHT_BUTTON)' in view, "Right click 
 check('if (armed_drag_)' in view and 'startDrag()' in view, "Tap-and-hold drag regression")
 check('TwoFingerMode::SCROLL' in view and 'TwoFingerMode::PAN' not in view, "Two-finger remote wheel scroll must remain at every zoom")
 check('sendWheel(steps)' in view and 'pinch_centroid_.y() - centroid.y()' in view, "Wheel scroll gesture disabled")
-check('edge_x = zoom_ > 1.01' in view and 'edge_y = zoom_ > 1.01' in view, "Zoomed mouse-follow margins missing")
+check('edge_pan_timer_' in view and 'trigger_x = view_width * 0.12' in view and 'comfort_x = view_width * 0.24' in view, "Finite cursor-follow threshold/comfort band missing")
 check('content_pos_ += QPointF(dx, dy)' in view, "Viewport must follow the moving remote cursor")
 check('fittedSize() const' in view and 'QSizeF(width(), viewportHeight())' in view, "Fit excludes neither keyboard nor toolbar")
 check('height() - keyboard_inset_ - key_bar_height_' in view, "Persistent shortcut bar must reduce visible area")
