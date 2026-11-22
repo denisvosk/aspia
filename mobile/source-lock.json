@@ -29,7 +29,7 @@
     "cause": "Invalid ELF PT_LOAD offset/address congruence in final libcrypto_3.so and libssl_3.so"
   },
   "picker_fix_file": "android-document-picker.patch",
-  "picker_fix_sha256": "e2a99f0aeaeca7beb462f0d4d1b86ff3152b8b648234e6b72d6d31dac46a0289",
+  "picker_fix_sha256": "e5fe9d1f393d2e45411d754e3d41894605b497d7af16f9c7b4fb5b6ce8eba9f4",
   "previous_release": {
     "version": "2.7.2-mobile.3",
     "apk_sha256": "ce7a6d48e486629ec857b43350cdebcec734d03c3b861792e9fef38a8a30d5ff",

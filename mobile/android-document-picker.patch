@@ -27,16 +27,28 @@ diff --git a/source/client/android/mobile_book_manager.cc b/source/client/androi
 diff --git a/CMakePresets.json b/CMakePresets.json
 --- a/CMakePresets.json
 +++ b/CMakePresets.json
-@@ -1,2 +1,2 @@
+@@ -235,8 +235,8 @@
+         "ASPIA_CLIENT_ONLY": "ON",
+         "ASPIA_MOBILE_PACKAGE_NAME": "org.aspiaplus.client",
+         "ASPIA_MOBILE_APP_NAME": "Aspia+ Mobile",
 -        "ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.3",
 -        "ASPIA_MOBILE_VERSION_CODE": "20702003"
 +        "ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.4",
 +        "ASPIA_MOBILE_VERSION_CODE": "20702004"
+       },
+       "environment": {
+         "VCPKG_DEFAULT_HOST_TRIPLET": "x64-linux"
 diff --git a/source/client/CMakeLists.txt b/source/client/CMakeLists.txt
 --- a/source/client/CMakeLists.txt
 +++ b/source/client/CMakeLists.txt
-@@ -1,2 +1,2 @@
+@@ -253,8 +253,8 @@
+ if (ANDROID)
+     set(ASPIA_MOBILE_PACKAGE_NAME "org.aspiaplus.client" CACHE STRING "Android application ID")
+     set(ASPIA_MOBILE_APP_NAME "Aspia+ Mobile" CACHE STRING "Android application name")
 -    set(ASPIA_MOBILE_VERSION_CODE "20702003" CACHE STRING "Monotonically increasing APK version")
 -    set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.3" CACHE STRING "APK release version")
 +    set(ASPIA_MOBILE_VERSION_CODE "20702004" CACHE STRING "Monotonically increasing APK version")
 +    set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.4" CACHE STRING "APK release version")
+     target_compile_definitions(aspia_client_core PUBLIC
+         ASPIA_MOBILE_VERSION_STRING="${ASPIA_MOBILE_VERSION_NAME}")
+     set(ASPIA_ANDROID_TLS_DIR "$ENV{ASPIA_ANDROID_TLS_DIR}" CACHE PATH "Directory containing Qt Android OpenSSL shared libraries")
