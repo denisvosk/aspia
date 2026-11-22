@@ -103,7 +103,7 @@ jobs:
         run: |
           cmake --preset mobile-android-linux \
             -DASPIA_MOBILE_VERSION_NAME=2.7.2-mobile.7 \
-            -DASPIA_MOBILE_VERSION_CODE=20702006
+            -DASPIA_MOBILE_VERSION_CODE=20702007
       - name: Build APK
         run: cmake --build --preset mobile-android-linux-apk --parallel 4
       - name: Collect the final unsigned APK and provenance
@@ -125,7 +125,7 @@ jobs:
           shutil.copyfile(candidates[0], apk)
           workspace = Path(os.environ['GITHUB_WORKSPACE'])
           lock = json.loads((workspace / 'mobile/source-lock.json').read_text())
-          if lock['version'] != '2.7.2-mobile.7' or lock['version_code'] != 20702006:
+          if lock['version'] != '2.7.2-mobile.7' or lock['version_code'] != 20702007:
               raise RuntimeError('The pinned source lock does not describe mobile.7')
           shutil.copyfile(workspace / 'mobile/source-lock.json', output / 'source-lock.json')
           (output / 'source-commit.txt').write_text(subprocess.check_output(
@@ -141,7 +141,7 @@ jobs:
             --apk mobile-artifacts/aspia-plus-mobile-2.7.2-mobile.7-arm64-unsigned.apk \
             --unsigned \
             --version-name 2.7.2-mobile.7 \
-            --version-code 20702006 \
+            --version-code 20702007 \
             --sdk-root "$ANDROID_SDK_ROOT" \
             --ndk-root "$ANDROID_NDK_ROOT" \
             --output mobile-artifacts/package-check.json
