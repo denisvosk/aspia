@@ -48,9 +48,13 @@
 
 ## Где скачать
 
-Публичные выпуски появятся на странице [GitHub Releases](https://github.com/denisvosk/aspia/releases) после публикации сопровождающим проекта. Если сейчас там пусто, это означает, что установочные файлы пока находятся в **Draft** (черновиках). Черновики не доступны обычным посетителям.
+**[Aspia+ 2.7.2 Windows — Preview 25 (публичный prerelease)](https://github.com/denisvosk/aspia/releases/tag/v2.7.2-audit-inventory-preview.25).** В комплекте Host, Console, Client и Router для x86/x64, исходный код, лицензия, SHA-256, инструкция и архив готовой страницы загрузок. Не устанавливайте экспериментальную версию сразу на весь парк компьютеров.
 
-[GitHub Actions](https://github.com/denisvosk/aspia/actions) хранит проверочные сборочные артефакты ограниченное время; не путайте их с подписанными публичными релизами.
+**Aspia+ Mobile 8**: подписанный тестовый APK предоставляется отдельно сопровождающим проекта и не входит в Windows Preview 25. [Исходники и история сборки](https://github.com/denisvosk/aspia/tree/feature/mobile8-samsung-keyboard). Артефакт GitHub Actions — **неподписанный**, Android-установщиком для обновления поверх предыдущей версии не является.
+
+Предыдущие Windows-превью остаются в статусе **Draft** и недоступны обычным посетителям GitHub.
+
+[GitHub Actions](https://github.com/denisvosk/aspia/actions) хранит проверочные артефакты ограниченное время; не путайте их с установочными пакетами опубликованного релиза.
 
 ## English summary
 
@@ -58,6 +62,6 @@
 
 - **Mobile 8:** Android 12+ ARM64, app-local RU/EN remote keyboard, narrower centered landscape layout, remote paste from the phone, touch zoom/pan and a scrollable control strip.
 - **Windows 2.7.2 preview:** x86/x64 Host, Client, Console and Router. Server-side **session audit** with Router/Host identities, timestamps and CSV export; scheduled **hardware inventory** for the address book with HTML/CSV reports; bidirectional Windows Explorer **file/folder copy and paste** (Ctrl+C/Ctrl+V); negotiated **RTF/HTML/PNG** clipboard formats with plain-text fallback. Full cross-machine acceptance testing is ongoing. Drag-and-drop is not claimed.
-- **Downloads:** see the [Releases page](https://github.com/denisvosk/aspia/releases) after the maintainer publishes a prerelease. GitHub Actions artifacts may be unsigned.
+- **Downloads:** [Windows Preview 25 is publicly available](https://github.com/denisvosk/aspia/releases/tag/v2.7.2-audit-inventory-preview.25) as a prerelease with Windows MSI, source and checksums. Mobile 8 is a separately signed test APK and is not included in this Windows release. GitHub Actions APK artifacts are unsigned.
 
 Use only builds from a trusted source. Never share your Aspia private connection keys or Android APK signing keystore.
