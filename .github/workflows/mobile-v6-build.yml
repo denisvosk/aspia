@@ -2,7 +2,7 @@ name: Aspia+ Mobile 2.7.2-mobile.6 APK and startup test
 
 on:
   push:
-    branches: ['feature/mobile6-remote-controls']
+    branches: ['fix/mobile6-keyboard-bar']
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-v6-build.yml'
