@@ -1,0 +1,41 @@
+name: Android APK local signing-tool package (no keys)
+
+on:
+  push:
+    branches: ['fix/mobile4-aab-picker']
+    paths:
+      - '.github/workflows/android-signing-tools.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  export-apksigner:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Obtain Android SDK Build Tools 36
+        shell: bash
+        run: |
+          python - <<'PY'
+          import subprocess
+          subprocess.run(['sdkmanager', 'build-tools;36.0.0'],
+                         input='y\n' * 20, text=True, check=True)
+          PY
+      - name: Package public SDK signing utility only
+        shell: bash
+        run: |
+          mkdir -p apksigner-tools
+          cp "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar" apksigner-tools/
+          cp "$ANDROID_HOME/build-tools/36.0.0/zipalign" apksigner-tools/
+          sha256sum apksigner-tools/apksigner.jar apksigner-tools/zipalign > apksigner-tools/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-build-tools-36-apk-signing
+          path: apksigner-tools/
+          retention-days: 2
+          if-no-files-found: error
