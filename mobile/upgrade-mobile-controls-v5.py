@@ -252,6 +252,18 @@ def apply(root: Path) -> None:
         "            // Qt 6.11.1: prevent landscape IME extract mode (large blank input overlay).\n"
         "            Os.setenv(\"QT_ANDROID_NO_FULLSCREEN_KEYBOARD\", \"1\", true);")
 
+
+    # User explicitly requested unrestricted OS screenshots/recordings for
+    # support diagnostics. Remove FLAG_SECURE injected by the base patch.
+    # This keeps Android's normal screenshot keys working, with no settings UI.
+    replace_once(java,
+        "import android.view.WindowManager;\n", "")
+    replace_once(java,
+        "        // Credentials, book contents and the remote desktop must not enter recents thumbnails\n"
+        "        // or screen recordings while this protected administration app is open.\n"
+        "        getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);\n",
+        "")
+
     presets = root / "CMakePresets.json"
     replace_once(presets,
         '"ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.4",\n'

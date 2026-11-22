@@ -18,6 +18,7 @@ def check(condition, message):
     if not condition: raise AssertionError(message)
 
 check('QT_ANDROID_NO_FULLSCREEN_KEYBOARD' in java, "Landscape extract-mode suppression missing")
+check('FLAG_SECURE' not in java and 'WindowManager' not in java, "Android screenshots must not be blocked")
 check('long_pressed_ = true' in view and '!long_pressed_' in view, "Long press must send one right click without a trailing left click")
 check('sendClick(proto::input::MouseEvent::RIGHT_BUTTON)' in view, "Right click missing")
 check('if (armed_drag_)' in view and 'startDrag()' in view, "Tap-and-hold drag regression")

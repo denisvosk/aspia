@@ -63,3 +63,11 @@ zoomed, to prevent a stationary held finger from walking the mouse endlessly.
 
 `mobile/test_edge_pan.py` checks source invariants and simulates stationary
 pointer, diagonal and remote-border cases. Real Samsung UI remains unverified.
+
+## Screenshots and screen recording
+
+For legitimate remote support, Android's ordinary screenshot and screen recording
+features must work. The global `FLAG_SECURE` window policy is removed from the
+Android Activity after the pinned base patch is applied. No screenshots toggle
+or extra toolbar button is added. Screenshots containing credentials, internal
+records or personal data must still be shared appropriately.
