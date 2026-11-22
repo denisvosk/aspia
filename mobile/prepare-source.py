@@ -62,6 +62,11 @@ def main() -> int:
     if hashlib.sha256(controls_overlay.read_bytes()).hexdigest() != lock["controls_overlay_sha256"]:
         raise RuntimeError("Mobile 5 controls overlay SHA-256 mismatch")
     run(sys.executable, str(controls_overlay), str(output), cwd=output)
+    # Keep the viewport policy isolated and hash-pinned after the controls overlay.
+    edge_pan_overlay = bundle / lock["edge_pan_overlay_file"]
+    if hashlib.sha256(edge_pan_overlay.read_bytes()).hexdigest() != lock["edge_pan_overlay_sha256"]:
+        raise RuntimeError("Mobile 5 edge-pan overlay SHA-256 mismatch")
+    run(sys.executable, str(edge_pan_overlay), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)

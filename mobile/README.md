@@ -46,3 +46,20 @@ session, touch interactions on Samsung One UI, the IME, or actual locking
 permissions. Try the new controls on a noncritical Windows PC first and keep
 the known-good mobile.4 APK as a rollback option. Do not uninstall mobile.4
 or publish any private `.aab` on your public web server.
+
+## Finite cursor-triggered automatic panning
+
+The viewport does not perpetually scroll when the user parks the mouse at the
+edge. When the remote pointer reaches the outer 12% of a zoomed viewport, it
+arms one finite pan target bringing it to an inner 24% comfort boundary. The
+pointer stays at its original remote coordinate; only the image shifts over
+16 ms timer ticks, with damped steps and no inertia beyond the target. The
+move stops at the comfort threshold or at a real edge of the remote image,
+even when the controlling finger has already stopped. In corners both axes
+move together. Additional pointer movement may re-target the finite pan;
+pinching cancels it. Two-finger scroll continues to scroll the remote window.
+Existing long-drag auto-cursor movement is disabled specifically while
+zoomed, to prevent a stationary held finger from walking the mouse endlessly.
+
+`mobile/test_edge_pan.py` checks source invariants and simulates stationary
+pointer, diagonal and remote-border cases. Real Samsung UI remains unverified.
