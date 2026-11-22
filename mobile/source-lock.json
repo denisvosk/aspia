@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.4",
-  "version_code": 20702004,
+  "version": "2.7.2-mobile.5",
+  "version_code": 20702005,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Document-picker MIME fix in source; build and device-selection test not yet completed",
+  "build_state": "Controls overlay committed; CI build and full device validation pending",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -31,9 +31,11 @@
   "picker_fix_file": "android-document-picker.patch",
   "picker_fix_sha256": "e5fe9d1f393d2e45411d754e3d41894605b497d7af16f9c7b4fb5b6ce8eba9f4",
   "previous_release": {
-    "version": "2.7.2-mobile.3",
-    "apk_sha256": "ce7a6d48e486629ec857b43350cdebcec734d03c3b861792e9fef38a8a30d5ff",
-    "build_run_id": 44962292397,
-    "android12_startup_passed": true
-  }
+    "version": "2.7.2-mobile.4",
+    "build_run_id": 44968131657,
+    "android12_startup_passed": true,
+    "user_verified": "Samsung S10 Android 12; local .aab import and live remote desktop succeeded"
+  },
+  "controls_overlay_file": "upgrade-mobile-controls-v5.py",
+  "controls_overlay_sha256": "dd30adc8b99b7059e280148fb77f12427a42498c15b9d9f97b670a233a2b5e54"
 }

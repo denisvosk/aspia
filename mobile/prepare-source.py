@@ -58,11 +58,15 @@ def main() -> int:
         raise RuntimeError("Mobile document picker patch SHA-256 mismatch")
     run("git", "apply", "--check", str(picker_fix), cwd=output)
     run("git", "apply", str(picker_fix), cwd=output)
+    controls_overlay = bundle / lock["controls_overlay_file"]
+    if hashlib.sha256(controls_overlay.read_bytes()).hexdigest() != lock["controls_overlay_sha256"]:
+        raise RuntimeError("Mobile 5 controls overlay SHA-256 mismatch")
+    run(sys.executable, str(controls_overlay), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
     print(f"Complete Aspia+ Mobile {lock['version']} source is ready: {output}")
-    print("Build instructions: ci/mobile-tests and .github/workflows/mobile-v3-build.yml in the release repository")
+    print("Build instructions: .github/workflows/mobile-v5-build.yml and mobile/README.md")
     return 0
 
 
