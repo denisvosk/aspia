@@ -49,7 +49,8 @@ check("width() * 75 / 100" in kb and
 check("landscape_keys_" not in kb and "kUsbTab" not in kb,
       "Esc/Tab/arrows must stay on KeyBar, not the typing keyboard")
 check('space_key_->setText(ru_ ? QStringLiteral("Русский")' in kb and
-      'emit sig_text(QStringLiteral(" "))' in kb,
+      ('emit sig_text(QStringLiteral(" "))' in kb or
+       'emit sig_text(QStringLiteral(" "), ru_)' in kb),
       "Space with language arrows missing")
 check('QStringLiteral("Enter")' in kb and 'kUsbEnter' in kb,
       "Visible Enter key missing")
