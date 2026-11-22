@@ -25,11 +25,26 @@
 
 **Подписанный APK 2.7.2-mobile.8:** SHA-256 `2b368794cae7ec87115cad858cc29a128e37e2f873b6557e0da29e1e96b13d6a`; SHA-256 сертификата подписи `9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c`. Сверяйте эти значения с файлом, полученным от сопровождающего проекта. Артефакт из GitHub Actions — **неподписанный** и не заменяет установочный APK.
 
-### Aspia+ 2.7.2 — Windows, sessions & inventory preview
+### Aspia+ 2.7.2 — Windows: журнал сеансов, инвентаризация и файловый буфер
 
-В предварительной ветке Windows выпускаются **Host, Client, Console и Router** для x86 и x64. Добавлены экспериментальные улучшения учёта сеансов и инвентаризации. Автоматические сборочные, протокольные и MSI-проверки preview.25 прошли; интерактивное тестирование на нескольких реальных компьютерах для отдельных функций ещё требуется.
+Предварительная версия для Windows включает **Host, Client, Console и Router** (x86 и x64). От оригинальной Aspia 2.7 она отличается следующими возможностями:
 
-Существующая инфраструктура Relay 2.7 при подготовке Windows preview не изменялась. Не обновляйте сразу весь парк: сначала протестируйте на отдельных компьютерах, сохранив резервные копии настроек и ключей.
+**1. Централизованный журнал подключений.** Новый Host сообщает о подтверждённых сеансах Router, а администратор просматривает их в **Управление маршрутизатором → Журнал сеансов** через Console. Отображаются подтверждённые учётные записи Router и Host, Host ID, имя компьютера из книги, тип подключения, начало, окончание, продолжительность и состояние. Есть группировка по датам, фильтры, поиск и экспорт CSV. Если соединение не проходит через аутентифицированный Router или используется старый компонент, некоторые поля остаются неподтверждёнными. История собирается **после обновления**, прежние сеансы задним числом не появляются.
+
+**2. Автоматическая инвентаризация всей адресной книги.** Обновлённые Host собирают аппаратные сведения при регистрации и примерно раз в сутки, даже без открытой Console. Router сохраняет последний снимок. В Console доступен **Отчёт по оборудованию** с группами, процессором, ядрами и потоками, RAM, физическими SSD/HDD, логическими дисками и свободным местом, ОС, материнской платой, последним появлением и давностью сведений. Экспорт — **HTML** (можно распечатать в PDF) и **CSV** для Excel. Старые Host могут отмечаться как присутствующие, но не отправляют полную новую аппаратную сводку.
+
+**3. Файлы и папки через Ctrl+C / Ctrl+V.** В сеансе управления можно копировать файлы и папки из локального Проводника Windows в удалённый и обратно, без отдельного диалога передачи. Для этого **Host и программа подключения (Client/Console) должны поддерживать доработку** и иметь разрешённые буфер обмена и передачу файлов. Передаются содержимое и дерево папок, но не NTFS ACL, дополнительные потоки и временные метки; **Ctrl+X и drag-and-drop не заявлены**. На тестовых Windows-машинах копирование файлов и папок в обе стороны подтверждалось. Проверка фонового копирования больших папок, прогресса, отмены и отзывчивости Проводника остаётся частью пилота.
+
+**4. Расширенный буфер обмена Windows.** Помимо обычного текста реализован согласуемый обмен форматированным текстом **RTF, CF_HTML** и изображениями **PNG/DIB**. Старые участники 2.7 продолжают пользоваться обычным текстовым буфером. Перенос сложных документов Word, таблиц Excel и встроенных объектов не гарантирует полного совпадения; практические проверки разных приложений ещё необходимы.
+
+**Совместимость и внедрение:** используется существующий транспорт Aspia 2.7, Relay 2.7 оставлен без изменения. Для журнала и инвентаризации нужны согласованные новые Host, Router и Console. Старые клиентские программы могут отклонять подключение к компонентам с более высокой версией, поэтому программы администраторов обновляют до тестового Host/Router. Перед обновлением Router сохраните его БД, пользователей и ключи; начинайте с одного-двух тестовых компьютеров. Установка новой версии не является принудительным изменением инфраструктуры и не требует перехода на 3.x.
+
+**Состояние:** Windows Preview 25 прошёл автоматические сборочные, протокольные, MSI, обновительные и инфраструктурные проверки x86/x64. Это **предварительный выпуск**, а не подтверждённая массовая промышленная эксплуатация всех новых функций. Живые проверки по сценарию ниже остаются обязательными.
+
+- [Полная инструкция по журналу и инвентаризации](https://github.com/denisvosk/aspia/blob/feature/audit-inventory-2.7.2/docs/audit-inventory-preview.md)
+- [Описание и ограничения файлового буфера](https://github.com/denisvosk/aspia/blob/feature/audit-inventory-2.7.2/docs/clipboard-preview.md)
+- [Результаты ручных тестов и оставшиеся проверки](https://github.com/denisvosk/aspia/blob/feature/audit-inventory-2.7.2/docs/clipboard-live-test-status.md)
+
 
 ## Где скачать
 
@@ -42,7 +57,7 @@
 **Aspia+ is an unofficial experimental Aspia fork**, intended for administrators keeping their existing Aspia 2.7 Router/Relay/Host infrastructure.
 
 - **Mobile 8:** Android 12+ ARM64, app-local RU/EN remote keyboard, narrower centered landscape layout, remote paste from the phone, touch zoom/pan and a scrollable control strip.
-- **Windows 2.7.2 preview:** x86/x64 Host, Client, Console and Router builds with experimental session and inventory improvements; real-world acceptance testing is ongoing.
+- **Windows 2.7.2 preview:** x86/x64 Host, Client, Console and Router. Server-side **session audit** with Router/Host identities, timestamps and CSV export; scheduled **hardware inventory** for the address book with HTML/CSV reports; bidirectional Windows Explorer **file/folder copy and paste** (Ctrl+C/Ctrl+V); negotiated **RTF/HTML/PNG** clipboard formats with plain-text fallback. Full cross-machine acceptance testing is ongoing. Drag-and-drop is not claimed.
 - **Downloads:** see the [Releases page](https://github.com/denisvosk/aspia/releases) after the maintainer publishes a prerelease. GitHub Actions artifacts may be unsigned.
 
 Use only builds from a trusted source. Never share your Aspia private connection keys or Android APK signing keystore.
