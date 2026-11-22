@@ -52,7 +52,7 @@ jobs:
       - name: Test finite cursor edge pan and no ghost two-finger zoom
         run: python "$GITHUB_WORKSPACE/mobile/test_edge_pan.py" .
       - name: Guard mobile 6 input and IME source
-        run: python "$GITHUB_WORKSPACE/mobile/test_mobile7_ui.py" .
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile6_ui.py" .
       - name: Guard Mobile7 compact keyboard, bottom bar and clipboard
         run: python "$GITHUB_WORKSPACE/mobile/test_mobile7_keyboard.py" .
       - name: Native build tools
