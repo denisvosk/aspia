@@ -1,0 +1,58 @@
+name: Publish verified Aspia+ Windows Preview 25 (prerelease)
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/publish-preview25.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: aspia-plus-publish-preview25
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'denisvosk/aspia'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v2.7.2-audit-inventory-preview.25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify existing draft is complete before public release
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,assets > /tmp/aspia-preview25.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          release = json.loads(Path("/tmp/aspia-preview25.json").read_text())
+          if release["tagName"] != "v2.7.2-audit-inventory-preview.25":
+              raise SystemExit("Wrong draft release: refusing to publish")
+          present = {a["name"] for a in release["assets"]}
+          needed = {
+              f"aspia-{product}-2.7.2-{arch}.msi"
+              for product in ("host", "client", "console", "router")
+              for arch in ("x86", "x86_64")
+          }
+          needed.update(("aspia-2.7.2-audit-inventory-source.zip",
+                         "LICENSE.md", "README-preview.md", "SHA256SUMS.txt"))
+          missing = sorted(needed - present)
+          if missing:
+              raise SystemExit("Incomplete preview; refusing publication: " + ", ".join(missing))
+          print("Verified Windows x86/x64 MSI, source, license and checksum files.")
+          PY
+      - name: Publish as explicitly labelled prerelease, leave live update feeds unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --title "Aspia+ 2.7.2 Preview 25 — журнал, инвентаризация, файловый буфер" \
+            --notes-file docs/public-preview25-notes.md \
+            --draft=false --prerelease
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,tagName,url
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease | \
+            python3 -c 'import json,sys; r=json.load(sys.stdin); assert not r["isDraft"] and r["isPrerelease"]'
