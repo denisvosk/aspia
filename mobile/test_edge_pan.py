@@ -64,7 +64,8 @@ def simulate_cursor_in_view(cursor_frame, view=(1000,600), content=(2000,1200), 
         offset,target,active=step(point,offset,view,content,target)
         pointer_positions.append(point)
         if not active:
-            return n+1, offset, target, point, pointer_positions
+            final_pointer = (cursor_frame[0] + offset[0], cursor_frame[1] + offset[1])
+            return n+1, offset, target, final_pointer, pointer_positions
     raise AssertionError("edge animation did not settle")
 
 
