@@ -12,14 +12,18 @@ Mobile.5 improves only the Android remote desktop interaction:
 - Long press of one finger sends one right-click. A double tap followed by
   holding/moving still drags using the left mouse button. A two-finger tap still
   sends right click.
-- At magnification over 1x, a two-finger drag pans the visible desktop rather
-  than scrolling the remote application. At 1x, the existing two-finger wheel
-  scroll remains. Pinch zoom remains available.
+- Two-finger drag up/down **always** scrolls the remote window, at fit and
+  magnified zoom, like TeamViewer's mouse mode. Pinch zoom remains available.
+- When zoomed, moving the remote cursor toward an edge automatically shifts
+  the visible frame to keep the pointer onscreen. No two-finger pan mode is
+  substituted for the useful wheel scrolling gesture.
 - Fit mode computes size from the visible area above the bottom bar and keyboard;
   moving/pinching no longer forces the view back to the remote pointer.
 - The direct Lock action uses host power control when advertised; otherwise
   sends Windows Win+L keys via the **existing** legacy 2.7 input path, after a
   confirmation. The Ctrl+Alt+Del command remains separate.
+- The scary 'Power' menu is explicitly labelled 'Питание и сеанс…' and
+  opens a submenu, never shutting the computer down on the first tap.
 - Rotate toggles the Android Activity between landscape and portrait *without
   changing the phone's global auto-rotate switch*, and restores automatic
   orientation on leaving the session.

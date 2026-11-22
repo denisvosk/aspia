@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Controls overlay committed; CI build and full device validation pending",
+  "build_state": "Updated after user feedback: preserve two-finger scroll; follow mouse at edges when zoomed; build not verified yet",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -37,5 +37,5 @@
     "user_verified": "Samsung S10 Android 12; local .aab import and live remote desktop succeeded"
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
-  "controls_overlay_sha256": "dd30adc8b99b7059e280148fb77f12427a42498c15b9d9f97b670a233a2b5e54"
+  "controls_overlay_sha256": "23efdc66fe061d6c5e9de20beb2cf50f69e00c748ff41fb40b2fa6994a20ec4a"
 }

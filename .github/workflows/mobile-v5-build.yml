@@ -2,7 +2,7 @@ name: Aspia+ Mobile 2.7.2-mobile.5 APK and startup test
 
 on:
   push:
-    branches: ['fix/mobile5-aab-picker']
+    branches: ['feature/mobile5-remote-controls']
     paths:
       - 'mobile/**'
       - '.github/workflows/mobile-v5-build.yml'
@@ -13,7 +13,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: aspia-mobile-v3-${{ github.ref }}
+  group: aspia-mobile-v5-${{ github.ref }}
   cancel-in-progress: true
 
 env:

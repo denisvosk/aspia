@@ -28,9 +28,6 @@ def apply(root: Path) -> None:
     replace_once(view_h,
         "    bool moved_ = false;\n    qreal pinch_distance_ = 0.0;",
         "    bool moved_ = false;\n    bool long_pressed_ = false;\n    qreal pinch_distance_ = 0.0;")
-    replace_once(view_h,
-        "    enum class TwoFingerMode { UNDECIDED, ZOOM, SCROLL };",
-        "    enum class TwoFingerMode { UNDECIDED, ZOOM, PAN, SCROLL };")
 
     view_cc = root / "source/client/android/desktop_view.cc"
     replace_once(view_cc,
@@ -74,24 +71,10 @@ def apply(root: Path) -> None:
         "        gesture_ = Gesture::ONE_FINGER;\n        moved_ = false;\n"
         "        long_pressed_ = false;\n        last_point_ = down[0];")
     replace_once(view_cc,
-        "            two_finger_mode_ = (distance_change > centroid_move) ?\n"
-        "                TwoFingerMode::ZOOM : TwoFingerMode::SCROLL;",
-        "            two_finger_mode_ = (distance_change > centroid_move) ?\n"
-        "                TwoFingerMode::ZOOM : (zoom_ > 1.01 ? TwoFingerMode::PAN\n"
-        "                                                 : TwoFingerMode::SCROLL);")
-    replace_once(view_cc,
         "            // Keep the cursor on screen: zoom/pan must not leave it outside the visible area.\n"
         "            ensureCursorVisible();\n            update();",
         "            // Do not pull the viewport back to the remote mouse after the user's pan.\n"
         "            update();")
-    replace_once(view_cc,
-        "        else if (two_finger_mode_ == TwoFingerMode::SCROLL)\n",
-        "        else if (two_finger_mode_ == TwoFingerMode::PAN)\n"
-        "        {\n            // Move the magnified desktop under two fingers, without touching\n"
-        "            // the remote mouse pointer or sending any wheel events.\n"
-        "            content_pos_ += centroid - pinch_centroid_;\n"
-        "            clampContentPos();\n            update();\n        }\n"
-        "        else if (two_finger_mode_ == TwoFingerMode::SCROLL)\n")
     replace_once(view_cc,
         "        if (!dragging_ && !moved_)\n",
         "        if (!dragging_ && !moved_ && !long_pressed_)\n")
@@ -104,6 +87,23 @@ def apply(root: Path) -> None:
         "    return height() - keyboard_inset_ - bar;",
         "    // The shortcut bar stays visible even with the software keyboard closed.\n"
         "    return qMax<qreal>(1.0, height() - keyboard_inset_ - key_bar_height_);")
+    # When zoomed in, follow the virtual mouse if it approaches the viewport edge.
+    # This is NOT a two-finger pan: two-finger movement always remains remote wheel scroll.
+    replace_once(view_cc,
+        "    qreal dx = 0.0;\n    qreal dy = 0.0;\n"
+        "    if (pos.x() < 0.0)\n        dx = -pos.x();\n"
+        "    else if (pos.x() > width())\n        dx = width() - pos.x();\n"
+        "    if (pos.y() < 0.0)\n        dy = -pos.y();\n"
+        "    else if (pos.y() > bottom)\n        dy = bottom - pos.y();",
+        "    // Track the remote mouse with a margin at magnifications above fit.\n"
+        "    // Keep room for the persistent quick bar, keyboard and the pointer hotspot.\n"
+        "    const qreal edge_x = zoom_ > 1.01 ? qMin(qreal(42), width() * 0.12) : 0.0;\n"
+        "    const qreal edge_y = zoom_ > 1.01 ? qMin(qreal(42), bottom * 0.12) : 0.0;\n"
+        "    qreal dx = 0.0;\n    qreal dy = 0.0;\n"
+        "    if (pos.x() < edge_x)\n        dx = edge_x - pos.x();\n"
+        "    else if (pos.x() > width() - edge_x)\n        dx = width() - edge_x - pos.x();\n"
+        "    if (pos.y() < edge_y)\n        dy = edge_y - pos.y();\n"
+        "    else if (pos.y() > bottom - edge_y)\n        dy = bottom - edge_y - pos.y();")
 
     key_h = root / "source/client/android/key_bar.h"
     replace_once(key_h,
@@ -193,6 +193,9 @@ def apply(root: Path) -> None:
         "    int keyboard_index = -1;\n    int fit_index = -1;\n",
         "    int keyboard_index = -1;\n    int fit_index = -1;\n"
         "    int right_index = -1;\n    int lock_index = -1;\n    int rotate_index = -1;\n")
+    replace_once(window_cc,
+        '            action_sheet_->addItem(tr("Power"), ":/img/material/power.svg");',
+        '            action_sheet_->addItem(QStringLiteral("Питание и сеанс…"), ":/img/material/power.svg");')
     replace_once(window_cc,
         "        fit_index = next_index++;\n"
         "        action_sheet_->addItem(QStringLiteral(\"Вписать в экран\"), \":/img/material/monitor.svg\");\n",
@@ -289,7 +292,7 @@ def apply(root: Path) -> None:
         'set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.4" CACHE STRING',
         'set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.5" CACHE STRING')
 
-    print("Aspia+ Mobile v5 controls: persistent shortcuts, right click, pan, fit, lock, rotation, compact IME")
+    print("Aspia+ Mobile v5 controls: persistent shortcuts, right click, wheel scroll, mouse-follow fit, lock, rotation, compact IME")
 
 
 if __name__ == "__main__":
