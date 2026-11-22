@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.3",
-  "version_code": 20702003,
+  "version": "2.7.2-mobile.4",
+  "version_code": 20702004,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,59 +18,22 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Signed release APK passed package validation and the 60-second Android 12 startup test",
+  "build_state": "Document-picker MIME fix in source; build and device-selection test not yet completed",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
-  "apk_file": "aspia-plus-mobile-2.7.2-mobile.3-arm64.apk",
-  "apk_sha256": "ce7a6d48e486629ec857b43350cdebcec734d03c3b861792e9fef38a8a30d5ff",
-  "apk_size_bytes": 27699965,
-  "unsigned_apk_sha256": "5584629ac696f91466f270789f6101b1121fd4f779e656a0012ba721cc2fec56",
-  "build_run_id": 44962292397,
-  "build_source_commit": "dccddd08825794a20edcb45006a834fa3d1e68ef",
-  "build_artifact_id": 14731815137,
-  "package_validation": {
-    "passed": true,
-    "signature_verified": true,
-    "checks": [
-      "manifest_and_abi",
-      "release_signature",
-      "zipalign_16k",
-      "custom_java_class_definitions",
-      "native_payload",
-      "elf_16k_and_dependency_closure"
-    ],
-    "native_library_count": 19,
-    "compiled_payload_unchanged_after_release_signing": true,
-    "payload_entries_compared": 73
-  },
-  "runtime_validation": {
-    "passed": true,
-    "workflow_run_id": 44962292397,
-    "job_id": 137032161404,
-    "artifact_id": 14731755986,
-    "android_sdk": 31,
-    "android_version": "12",
-    "emulator_model": "sdk_gphone64_x86_64",
-    "native_bridge": "libndk_translation.so",
-    "observation_seconds": 60,
-    "process_samples": 13,
-    "same_process_in_all_samples": true,
-    "foreground_at_final_check": true,
-    "crash_buffers_empty": true,
-    "anr_recorded": false,
-    "compiled_payload_unchanged": true,
-    "test_certificate": "temporary CI debug certificate; not a release APK",
-    "limitations": [
-      "A live process and resumed activity do not prove an interactive or fully initialized UI.",
-      "This test does not verify a physical phone, local book import or remote sessions.",
-      "The original ARM64 native code runs through the emulator's native bridge."
-    ]
-  },
   "reproduced_startup_failure": {
     "version": "2.7.2-mobile.2",
     "workflow_run_id": 44961489415,
     "error": "UnsatisfiedLinkError: cannot find _meth_data from verneed[0] in libcrypto_3.so",
     "cause": "Invalid ELF PT_LOAD offset/address congruence in final libcrypto_3.so and libssl_3.so"
+  },
+  "picker_fix_file": "android-document-picker.patch",
+  "picker_fix_sha256": "e2a99f0aeaeca7beb462f0d4d1b86ff3152b8b648234e6b72d6d31dac46a0289",
+  "previous_release": {
+    "version": "2.7.2-mobile.3",
+    "apk_sha256": "ce7a6d48e486629ec857b43350cdebcec734d03c3b861792e9fef38a8a30d5ff",
+    "build_run_id": 44962292397,
+    "android12_startup_passed": true
   }
 }

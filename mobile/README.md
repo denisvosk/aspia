@@ -1,172 +1,28 @@
-# Aspia+ Mobile 2.7.2-mobile.3
+# Aspia+ Mobile 2.7.2-mobile.4 — Android .aab picker fix
 
-Android-клиент для подключения к компьютерам из адресной книги Aspia 2.7.
-Основной сценарий: открыть приложение, подтвердить вход отпечатком или
-PIN-кодом телефона, выбрать компьютер и подключиться к рабочему столу.
+Mobile.3 starts successfully on Android 12 but Samsung One UI's native document
+picker can grey out a valid `.aab` file. Qt's Android picker translates the
+original `*.aab` name filter into MIME types, but `.aab` has no registered
+Android MIME type. This blocks selection before the file decoder runs.
 
-## Исправление запуска mobile.3
+Mobile.4 uses Qt's documented `application/octet-stream` all-files MIME filter
+for Android, still only permits existing files, and validates the actual AAB
+content, size and password before transactionally replacing the local book.
+The desktop `*.aab` filter remains unchanged. The server-book download feature
+is not enabled. Router/Relay/Host 2.7 and signing identity are unchanged.
 
-В mobile.2 воспроизведено падение до открытия интерфейса на Android 12:
-`UnsatisfiedLinkError: cannot find "_meth_data" from verneed[0]` при загрузке
-`libcrypto_3.so`. В конечном APK нарушена конгруэнтность файлового смещения
-и виртуального адреса сегмента ELF; аналогичный дефект есть у `libssl_3.so`.
-Проверка только подписи и наличия библиотек не подтверждает их загрузку.
-
-В mobile.3 OpenSSL получает суффикс `_3` при линковке через собственный
-OpenSSL target. Последующее переписывание ELF с помощью `patchelf` убрано.
-Workflow проверяет именно упакованный APK и затем запускает его на чистом
-Android 12 с KVM. Состояние проверки конкретного выпуска записано в
-`source-lock.json` и результатах GitHub Actions. Проверка запуска не заменяет
-проверку импорта книги и удалённого сеанса на физическом телефоне.
-
-### Проверенный выпуск от 22 ноября 2026
-
-[Сборка и проверка запуска mobile.3](https://github.com/denisvosk/aspia/actions/runs/44962292397)
-завершились успешно. Проверен ARM64-код на Android 12 / API 31 в эмуляторе
-с `libndk_translation.so`: один процесс сохранялся во всех 13 замерах
-за 60 секунд, Activity оставалась активной в конце проверки, журналы падений
-пусты, ANR не зарегистрирован. Журнал также подтверждает запуск нативного
-приложения и создание локальной базы. Физический телефон, интерактивность
-интерфейса, импорт книги и удалённый сеанс этим тестом не проверены.
-
-Готовый APK подписан прежним сертификатом Aspia+ Mobile. После подписи
-полная проверка пакета прошла для всех 19 библиотек; 73 элемента содержимого
-совпали с unsigned APK, который использовался в проверке запуска.
-Версия — `2.7.2-mobile.3`, versionCode — `20702003`, размер — 27 699 965 байт.
-SHA-256 готового установщика:
-
-```text
-ce7a6d48e486629ec857b43350cdebcec734d03c3b861792e9fef38a8a30d5ff
-```
-
-Для сравнения, [исходный mobile.2](https://github.com/denisvosk/aspia/actions/runs/44961489415)
-падал при первом запуске с ошибкой загрузки `libcrypto_3.so`.
-Подробные идентификаторы сборки, артефактов и границы проверки сохранены
-в `source-lock.json`. Устанавливайте подписанный APK поверх прежней версии.
-
-## Основа и исходный код
-
-Использован официальный Aspia **v3.0.37**, commit
-`68e2fc9e05aff6c874b2cc32132978e859a0291f`:
-https://github.com/dchapyshev/aspia/tree/68e2fc9e05aff6c874b2cc32132978e859a0291f
-
-Этот выпуск сохраняет необходимые части протокола Aspia 2.7. В мобильной
-версии добавлены явный адаптер старого Router, поддержка старого Host,
-локальный импорт .aab, ручное добавление Router и Host и упрощённая навигация.
-Версия приложения `2.7.2-mobile.3` обозначает эту сборку Aspia+;
-внутренние константы исходной протокольной версии сохранены.
-
-Исходники восстанавливаются последовательно: `aspia-mobile-2.7.2.patch`,
-локальный интерфейс из `upgrade-mobile-v2.py`, затем `startup-fix.patch`.
-Контрольные суммы всех трёх частей и точная база записаны в `source-lock.json`.
-
-Для получения полного дерева исходников нужен Git и Python 3:
+The exact v3.0.37 upstream, patches, overlay, and newly added picker patch are
+SHA-256 pinned in `source-lock.json`. Recreate sources with:
 
 ```sh
 python3 mobile/prepare-source.py --output ../aspia-mobile-src
 ```
 
-Сценарий проверяет commit upstream и SHA-256 патча до применения,
-не перезаписывает непустой каталог и получает закреплённый submodule vcpkg.
-Исходники приложения и изменения распространяются под GPL-3.0-or-later;
-исходные авторские уведомления Aspia сохранены.
+Build / Android 12 startup CI: `.github/workflows/mobile-v4-build.yml`.
+Source-regression guard: `mobile/test_document_picker.py`.
+A passing startup test does *not* prove interaction with the Android document
+picker, Samsung-specific behavior, book decryption or remote connections.
+Those require physical-device verification before declaring the feature fixed.
 
-## Сборка
-
-Сборочная среда: Linux x86_64, CMake 3.30–3.x, Ninja, JDK 21,
-Qt 6.11.1 (`gcc_64` и `android_arm64_v8a`), Android SDK 36,
-build-tools 36.0.0, NDK 27.2.12479018. Полная последовательность установки
-и сборки находится в `.github/workflows/mobile-v3-build.yml` в репозитории
-Aspia+. Он восстанавливает `mobile-src`, собирает APK, проверяет конечный
-пакет и запускает его на виртуальном Android. Ветка диагностики:
-`debug/mobile-startup`. Для просмотра Logcat и работы с Android Studio
-см. [DEBUGGING-ANDROID.md](DEBUGGING-ANDROID.md).
-
-Основные команды после установки инструментов:
-
-```sh
-export QT_HOST_PATH=/path/to/Qt/6.11.1/gcc_64
-export QT_ANDROID_PATH=/path/to/Qt/6.11.1/android_arm64_v8a
-export ANDROID_SDK_ROOT=/path/to/android-sdk
-export ANDROID_NDK_ROOT="$ANDROID_SDK_ROOT/ndk/27.2.12479018"
-export ANDROID_NDK_HOME="$ANDROID_NDK_ROOT"
-export JAVA_HOME=/path/to/jdk21
-ci/build-android-openssl.sh /path/to/android-openssl
-export ASPIA_ANDROID_TLS_DIR=/path/to/android-openssl
-cmake --preset mobile-android-linux
-cmake --build --preset mobile-android-linux-apk --parallel 4
-```
-
-Сценарий OpenSSL получает закреплённый архив OpenSSL 3.6.3 и проверяет SHA-256.
-`libssl_3.so` и `libcrypto_3.so` включаются в APK для HTTPS-бэкенда Qt.
-Имена файлов, SONAME и зависимости задаются при линковке без `patchelf`.
-Версия Android: 12 и новее, архитектура: arm64-v8a.
-
-Сборка создаёт unsigned APK. Выпускаемый APK необходимо подписать сохранённым
-ключом Aspia+ Mobile и проверить `apksigner verify`. Закрытый ключ, пароль
-и адресные книги в этот репозиторий не входят. При смене ключа Android
-не позволит установить новую версию поверх существующей с сохранением данных.
-
-Для подписи и выравнивания подготовлен проверенный сценарий:
-
-```sh
-ci/sign-android-apk.sh unsigned.apk signed.apk /private/key.p12 /private/password-file
-```
-
-Проверщик `ci/check-android-apk.py` проверяет метаданные, сертификат, ABI,
-выравнивание, зависимости библиотек, наличие HTTPS-бэкенда и определений
-Java-классов приложения. Параметры доступны через `--help`.
-Для unsigned APK в CI используется явный `--unsigned`: этот режим не
-подтверждает подпись. После подписи требуется повторить полный режим
-с ожидаемым SHA-256 сертификата.
-
-## Проверки
-
-В `ci/mobile-tests` собран отдельный native harness, использующий настоящий
-код импорта, базы, криптографии и протокольного адаптера. Подменяется только
-платформенная подпись тестового компьютера; парсинг и криптография настоящие.
-
-```sh
-cmake -S ci/mobile-tests -B builds/mobile-tests -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_TOOLCHAIN_FILE="$PWD/vcpkg4aspia/scripts/buildsystems/vcpkg.cmake" \
-  -DVCPKG_TARGET_TRIPLET=x64-linux -DVCPKG_HOST_TRIPLET=x64-linux \
-  -DCMAKE_PREFIX_PATH="$QT_HOST_PATH"
-cmake --build builds/mobile-tests --parallel 4
-ctest --test-dir builds/mobile-tests --output-on-failure
-python3 source/client/tests/mobile_book_download_https_test.py \
-  --probe "$PWD/builds/mobile-tests/aspia_mobile_book_download_probe" \
-  --output "$PWD/builds/mobile-tests/https-results.json"
-```
-
-Отдельные фикстуры проверяют старый Router на loopback и серверную выдачу книги
-через настоящий Caddy. Команды приведены в соответствующих сценариях и
-`ops/mobile/README-Mobile-Book.txt`. В тестах используются искусственные
-книги, пароли и компьютеры, без подключения к рабочей сети.
-
-## Поведение и границы
-
-- Импорт сохраняет группы, названия, Router, сохранённые реквизиты Host
-  и их наследование. Пароль шифрования .aab запрашивается при импорте.
-- Повторный локальный импорт заменяет книгу целиком в транзакции, не создаёт дубликаты.
-  Пустая, повреждённая книга или ошибка импорта сохраняют прежний список.
-- Поддерживаются файлы до 16 МиБ, до 10 000 групп и до 100 000 компьютеров
-  при общей глубине не более 32; ограничен также объём раскрытых реквизитов.
-  Это защитные пределы импорта, не обещание удобной работы интерфейса
-  со 100 000 компьютеров на любом телефоне.
-- Адреса и пароли защищены криптографией приложения. Названия групп,
-  компьютеров и комментарии остаются в приватной базе Android без отдельного
-  шифрования всего файла базы. Резервное копирование Android отключено.
-- Быстрый вход использует Android Keystore и системный PIN/пароль или
-  сильную биометрию. Отдельный пароль приложения остаётся способом восстановления
-  доступа. После 30 секунд в фоне приложение повторно запрашивает вход.
-- Поддерживаются полный экран, поворот, масштабирование двумя пальцами,
-  возврат «Вписать в экран», экранная клавиатура и основные клавиши управления.
-- Это приложение для подключения к рабочему столу. Администрирование Router,
-  просмотр корпоративной инвентаризации и журналов остаются в настольной консоли.
-- Перед заменой рабочих инструментов требуется проверить на реальном Android
-  импорт своей книги, вход через системную защиту и подключение к Windows Host.
-  Компиляция и native-тесты сами по себе не подтверждают весь этот сценарий.
-
-Старые скрипты `ops/mobile` относятся к необязательной серверной публикации
-и не используются мобильной версией mobile.3. Используйте локальный импорт.
+Previous mobile.3 release notes: see Git history and run
+https://github.com/denisvosk/aspia/actions/runs/44962292397

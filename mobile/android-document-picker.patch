@@ -1,0 +1,42 @@
+diff --git a/source/client/android/mobile_book_manager.cc b/source/client/android/mobile_book_manager.cc
+--- a/source/client/android/mobile_book_manager.cc
++++ b/source/client/android/mobile_book_manager.cc
+@@ -3,8 +3,22 @@
+     if (busy_)
+         return;
+     QScopedValueRollback<bool> guard(busy_, true);
++#ifdef Q_OS_ANDROID
++    // Android DocumentsUI filters by MIME type, not *.aab extension. Android
++    // doesn't register a MIME type for Aspia books; a strict name filter makes
++    // even valid .aab files unselectable in the system document picker.
++    // Qt documents application/octet-stream as the all-files MIME filter.
++    // The AAB parser below validates format and enforces the size limit.
++    QFileDialog picker(parent_, QStringLiteral("Импорт книги Aspia"));
++    picker.setFileMode(QFileDialog::ExistingFile);
++    picker.setMimeTypeFilters({ QStringLiteral("application/octet-stream") });
++    if (picker.exec() != QDialog::Accepted)
++        return;
++    const QString path = picker.selectedFiles().value(0);
++#else
+     const QString path = QFileDialog::getOpenFileName(parent_, QStringLiteral("Импорт книги Aspia"),
+         {}, QStringLiteral("Книга Aspia (*.aab);;Все файлы (*)"));
++#endif
+     if (path.isEmpty())
+         return;
+     QFile file(path);
+diff --git a/CMakePresets.json b/CMakePresets.json
+--- a/CMakePresets.json
++++ b/CMakePresets.json
+@@ -1,2 +1,2 @@
+-        "ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.3",
+-        "ASPIA_MOBILE_VERSION_CODE": "20702003"
++        "ASPIA_MOBILE_VERSION_NAME": "2.7.2-mobile.4",
++        "ASPIA_MOBILE_VERSION_CODE": "20702004"
+diff --git a/source/client/CMakeLists.txt b/source/client/CMakeLists.txt
+--- a/source/client/CMakeLists.txt
++++ b/source/client/CMakeLists.txt
+@@ -1,2 +1,2 @@
+-    set(ASPIA_MOBILE_VERSION_CODE "20702003" CACHE STRING "Monotonically increasing APK version")
+-    set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.3" CACHE STRING "APK release version")
++    set(ASPIA_MOBILE_VERSION_CODE "20702004" CACHE STRING "Monotonically increasing APK version")
++    set(ASPIA_MOBILE_VERSION_NAME "2.7.2-mobile.4" CACHE STRING "APK release version")

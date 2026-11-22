@@ -53,6 +53,11 @@ def main() -> int:
         raise RuntimeError("Mobile startup fix SHA-256 mismatch")
     run("git", "apply", "--check", str(startup_fix), cwd=output)
     run("git", "apply", str(startup_fix), cwd=output)
+    picker_fix = bundle / lock["picker_fix_file"]
+    if hashlib.sha256(picker_fix.read_bytes()).hexdigest() != lock["picker_fix_sha256"]:
+        raise RuntimeError("Mobile document picker patch SHA-256 mismatch")
+    run("git", "apply", "--check", str(picker_fix), cwd=output)
+    run("git", "apply", str(picker_fix), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
