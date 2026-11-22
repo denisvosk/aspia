@@ -79,6 +79,10 @@ def main() -> int:
     if hashlib.sha256(mobile8_overlay.read_bytes()).hexdigest() != lock["mobile8_overlay_sha256"]:
         raise RuntimeError("Mobile 8 overlay checksum mismatch")
     run(sys.executable, str(mobile8_overlay), str(output), cwd=output)
+    mobile9_overlay = bundle / lock["mobile9_overlay_file"]
+    if hashlib.sha256(mobile9_overlay.read_bytes()).hexdigest() != lock["mobile9_overlay_sha256"]:
+        raise RuntimeError("Mobile 9 overlay checksum mismatch")
+    run(sys.executable, str(mobile9_overlay), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
