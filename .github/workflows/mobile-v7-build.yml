@@ -42,6 +42,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Cache Gradle downloads for Mobile7 builds
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+          cache-read-only: false
       - name: Prepare pinned mobile source and startup fix
         working-directory: ${{ github.workspace }}
         run: python mobile/prepare-source.py --output mobile-src
@@ -104,6 +109,24 @@ jobs:
           cmake --preset mobile-android-linux \
             -DASPIA_MOBILE_VERSION_NAME=2.7.2-mobile.7 \
             -DASPIA_MOBILE_VERSION_CODE=20702007
+      - name: Route Gradle Maven Central requests via Google Cloud mirror
+        run: |
+          # Gradle 9.3.1 (from Qt 6.11.1) supports Maven settings mirrors.
+          # Avoid Maven Central HTTP 429 from shared GitHub-hosted runner IPs.
+          mkdir -p "$HOME/.m2" "$HOME/.gradle"
+          cat > "$HOME/.m2/settings.xml" <<'MAVEN'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <mirrors>
+              <mirror>
+                <id>google-maven-central</id>
+                <name>Google Cloud Maven Central Mirror</name>
+                <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          MAVEN
+          echo 'org.gradle.mirror.maven.settings=true' >> "$HOME/.gradle/gradle.properties"
       - name: Build APK
         run: cmake --build --preset mobile-android-linux-apk --parallel 4
       - name: Collect the final unsigned APK and provenance
