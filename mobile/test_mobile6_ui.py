@@ -37,10 +37,13 @@ check('    return qMax<qreal>(1.0, height() - key_bar_height_);' in view,
       'IME must not alter fitted viewport height')
 check('    // change zoom, frame offset or cursor focus on its appearance.' in view,
       'Opening the keyboard still pans or scales the frame')
-check('setVerticalMode(keyboard_visible)' in win and
-      'key_bar_->setGeometry(0, 0, key_bar_->railThickness()' in win,
-      'Keyboard-visible control bar must move left')
-check('key_bar_->setVerticalMode(false)' not in win, 'Bar orientation must follow IME not a fixed flag')
+check(('setVerticalMode(keyboard_visible)' in win and
+       'key_bar_->setGeometry(0, 0, key_bar_->railThickness()' in win) or
+      ('key_bar_->setVerticalMode(false);' in win and
+       'const int bar_y = qMax(0, height() - bar_height);' in win),
+      'Key bar must remain reachable in the current orientation model')
+check('key_bar_->setVerticalMode(false)' in win or 'setVerticalMode(keyboard_visible)' in win,
+      'Bar orientation policy missing')
 check('QScroller::grabGesture(scroll_->viewport(), QScroller::TouchGesture)' in bar and
       'horizontalScrollBar()' in bar and 'verticalScrollBar()' in bar,
       'Control bar needs real 2-direction access')
@@ -60,8 +63,9 @@ check('void DesktopView::sendTaskManager()' in view and
       'Reliable Task Manager shortcut missing')
 check('sig_taskManagerRequested' in barh and 'sig_taskManagerRequested, view_, &DesktopView::sendTaskManager' in win,
       'Task Manager action not connected')
-check('    const bool keyboard_visible = keyboard_inset_ > 0;' in win and
-      'key_bar_->show();' in win, 'Controls must remain reachable in portrait')
+check('key_bar_->show();' in win and
+      ('const bool keyboard_visible = keyboard_inset_ > 0;' in win or
+       'compact_keyboard_visible_' in win), 'Controls must remain reachable in portrait')
 check('Правая кнопка мыши' not in win, 'Duplicate right-click item left in 3-dot menu')
 check('QTimer::singleShot(0, this' in app and 'relock();' in app,
       'Lock prompt must not be synchronously entered from Activity state signal')

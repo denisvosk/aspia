@@ -71,11 +71,15 @@ def main() -> int:
     if hashlib.sha256(mobile6_overlay.read_bytes()).hexdigest() != lock["mobile6_overlay_sha256"]:
         raise RuntimeError("Mobile 6 UI overlay SHA-256 mismatch")
     run(sys.executable, str(mobile6_overlay), str(output), cwd=output)
+    mobile7_overlay = bundle / lock["mobile7_overlay_file"]
+    if hashlib.sha256(mobile7_overlay.read_bytes()).hexdigest() != lock["mobile7_overlay_sha256"]:
+        raise RuntimeError("Mobile 7 overlay checksum mismatch")
+    run(sys.executable, str(mobile7_overlay), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
     print(f"Complete Aspia+ Mobile {lock['version']} source is ready: {output}")
-    print("Build instructions: .github/workflows/mobile-v6-build.yml and mobile/README.md")
+    print("Build instructions: .github/workflows/mobile-v7-build.yml and mobile/README.md")
     return 0
 
 
