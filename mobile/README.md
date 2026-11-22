@@ -1,13 +1,13 @@
 # Aspia+ Mobile 2.7.2-mobile.5 — remote controls
 
 This patch builds on the **user-verified mobile.4**: Samsung S10 on Android 12
-starts, locally imports `.aab`, reaches the old 2.7 Router/Relay and displays
+starts, locally imports `.aab`, reaches the old 2.7 Router/Relay and even Host 2.7.0 and displays
 the remote Windows desktop. Do not change any 2.7 keys or server components.
 
 Mobile.5 improves only the Android remote desktop interaction:
 
 - A persistent, horizontally scrollable bottom bar gives one-tap Keyboard,
-  right mouse button (ПКМ), Lock (Блок), Ctrl, Alt, Fit (Вписать), Rotate
+  right mouse button (ПКМ), Ctrl, Alt, Fit (Вписать), Rotate
   (Поворот), Shift, Win and useful navigation keys.
 - Long press of one finger sends one right-click. A double tap followed by
   holding/moving still drags using the left mouse button. A two-finger tap still
@@ -19,11 +19,10 @@ Mobile.5 improves only the Android remote desktop interaction:
   substituted for the useful wheel scrolling gesture.
 - Fit mode computes size from the visible area above the bottom bar and keyboard;
   moving/pinching no longer forces the view back to the remote pointer.
-- The direct Lock action uses host power control when advertised; otherwise
-  sends Windows Win+L keys via the **existing** legacy 2.7 input path, after a
-  confirmation. The Ctrl+Alt+Del command remains separate.
-- The scary 'Power' menu is explicitly labelled 'Питание и сеанс…' and
-  opens a submenu, never shutting the computer down on the first tap.
+- Based on user feedback, the established **Power → Lock** submenu is
+  preserved without duplicate lock controls or an additional Win+L fallback.
+  The original safety confirmation remains; opening Power does not shut down.
+  Ctrl+Alt+Del remains a separate action.
 - Rotate toggles the Android Activity between landscape and portrait *without
   changing the phone's global auto-rotate switch*, and restores automatic
   orientation on leaving the session.

@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Updated after user feedback: preserve two-finger scroll; follow mouse at edges when zoomed; build not verified yet",
+  "build_state": "User-confirmed Power -> Lock path preserved; two-finger scroll unchanged; updated controls overlay CI pending",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -34,8 +34,8 @@
     "version": "2.7.2-mobile.4",
     "build_run_id": 44968131657,
     "android12_startup_passed": true,
-    "user_verified": "Samsung S10 Android 12; local .aab import and live remote desktop succeeded"
+    "user_verified": "Samsung S10 Android 12; local .aab imported; live desktop connection to old Host 2.7.0 succeeded"
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
-  "controls_overlay_sha256": "23efdc66fe061d6c5e9de20beb2cf50f69e00c748ff41fb40b2fa6994a20ec4a"
+  "controls_overlay_sha256": "743aa2fbe736e77e0b59c64dd7446a5bc3dbe5c4cac35cc1dca22cfb1a6d90d5"
 }

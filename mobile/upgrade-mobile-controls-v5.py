@@ -24,17 +24,12 @@ def apply(root: Path) -> None:
     replace_once(view_h,
         "    void sendCtrlAltDelete();\n    void resetZoom();\n",
         "    void sendCtrlAltDelete();\n    void resetZoom();\n"
-        "    void sendRightClick();\n    void sendWinLock();\n")
+        "    void sendRightClick();\n")
     replace_once(view_h,
         "    bool moved_ = false;\n    qreal pinch_distance_ = 0.0;",
         "    bool moved_ = false;\n    bool long_pressed_ = false;\n    qreal pinch_distance_ = 0.0;")
 
     view_cc = root / "source/client/android/desktop_view.cc"
-    replace_once(view_cc,
-        "const quint32 kUsbDelete   = 0x07004c;",
-        "const quint32 kUsbDelete   = 0x07004c;\n"
-        "const quint32 kUsbLeftMeta = 0x0700e3;\n"
-        "const quint32 kUsbL        = 0x07000f;")
     replace_once(view_cc,
         "void DesktopView::setKeyBarHeight(int height)\n{\n    key_bar_height_ = height;\n}",
         "void DesktopView::setKeyBarHeight(int height)\n{\n"
@@ -47,12 +42,7 @@ def apply(root: Path) -> None:
         "    content_pos_ = {};\n    clampContentPos();\n    update();\n}\n\n"
         "// Right click at the remote cursor. The quick button always releases an active drag first.\n"
         "void DesktopView::sendRightClick()\n{\n    cancelTouch();\n"
-        "    sendClick(proto::input::MouseEvent::RIGHT_BUTTON);\n}\n\n"
-        "// Win+L is understood by legacy 2.7 Windows Hosts even if remote power controls\n"
-        "// are not advertised. Always release both keys, even if a modifier was latched.\n"
-        "void DesktopView::sendWinLock()\n{\n    cancelTouch();\n"
-        "    sendRawKey(kUsbLeftMeta, true);\n    sendRawKey(kUsbL, true);\n"
-        "    sendRawKey(kUsbL, false);\n    sendRawKey(kUsbLeftMeta, false);\n}\n")
+        "    sendClick(proto::input::MouseEvent::RIGHT_BUTTON);\n}\n")
     replace_once(view_cc,
         "    moved_ = false;\n    pinch_moved_ = false;\n    last_tap_time_ = {};",
         "    moved_ = false;\n    long_pressed_ = false;\n    pinch_moved_ = false;\n"
@@ -110,7 +100,7 @@ def apply(root: Path) -> None:
         "    void sig_specialKey(quint32 usb_keycode);\n",
         "    void sig_specialKey(quint32 usb_keycode);\n"
         "    void sig_keyboardRequested();\n    void sig_rightClickRequested();\n"
-        "    void sig_lockRequested();\n    void sig_fitRequested();\n"
+        "    void sig_fitRequested();\n"
         "    void sig_rotateRequested();\n")
     replace_once(key_h,
         "    void addModifier(QHBoxLayout* layout, const QString& text, quint32 usb_keycode);",
@@ -127,7 +117,6 @@ def apply(root: Path) -> None:
         "    addModifier(row, \"Win\", kUsbLeftMeta);",
         "    addAction(row, QStringLiteral(\"Клав.\"), &KeyBar::sig_keyboardRequested);\n"
         "    addAction(row, QStringLiteral(\"ПКМ\"), &KeyBar::sig_rightClickRequested);\n"
-        "    addAction(row, QStringLiteral(\"Блок\"), &KeyBar::sig_lockRequested);\n"
         "    addModifier(row, \"Ctrl\", kUsbLeftCtrl);\n"
         "    addModifier(row, \"Alt\", kUsbLeftAlt);\n"
         "    addAction(row, QStringLiteral(\"Вписать\"), &KeyBar::sig_fitRequested);\n"
@@ -153,7 +142,7 @@ def apply(root: Path) -> None:
     window_h = root / "source/client/android/desktop_window.h"
     replace_once(window_h,
         "    void showSessionActions();\n",
-        "    void showSessionActions();\n    void onQuickLock();\n    void rotateInterface();\n")
+        "    void showSessionActions();\n    void rotateInterface();\n")
     replace_once(window_h,
         "    bool power_control_available_ = false;\n",
         "    bool power_control_available_ = false;\n"
@@ -168,14 +157,13 @@ def apply(root: Path) -> None:
     replace_once(window_cc,
         "    key_bar_ = new KeyBar(this);\n    key_bar_->hide();\n",
         "    key_bar_ = new KeyBar(this);\n"
-        "    // Keep mouse, keyboard and lock controls available without opening the IME.\n"
+        "    // Keep mouse and keyboard controls available without opening the IME.\n"
         "    key_bar_->show();\n    key_bar_->raise();\n")
     replace_once(window_cc,
         "    connect(key_bar_, &KeyBar::sig_specialKey, view_, &DesktopView::onSpecialKey);\n",
         "    connect(key_bar_, &KeyBar::sig_specialKey, view_, &DesktopView::onSpecialKey);\n"
         "    connect(key_bar_, &KeyBar::sig_keyboardRequested, view_, &DesktopView::showSoftwareKeyboard);\n"
         "    connect(key_bar_, &KeyBar::sig_rightClickRequested, view_, &DesktopView::sendRightClick);\n"
-        "    connect(key_bar_, &KeyBar::sig_lockRequested, this, &DesktopWindow::onQuickLock);\n"
         "    connect(key_bar_, &KeyBar::sig_fitRequested, view_, &DesktopView::resetZoom);\n"
         "    connect(key_bar_, &KeyBar::sig_rotateRequested, this, &DesktopWindow::rotateInterface);\n")
     replace_once(window_cc,
@@ -192,10 +180,7 @@ def apply(root: Path) -> None:
     replace_once(window_cc,
         "    int keyboard_index = -1;\n    int fit_index = -1;\n",
         "    int keyboard_index = -1;\n    int fit_index = -1;\n"
-        "    int right_index = -1;\n    int lock_index = -1;\n    int rotate_index = -1;\n")
-    replace_once(window_cc,
-        '            action_sheet_->addItem(tr("Power"), ":/img/material/power.svg");',
-        '            action_sheet_->addItem(QStringLiteral("Питание и сеанс…"), ":/img/material/power.svg");')
+        "    int right_index = -1;\n    int rotate_index = -1;\n")
     replace_once(window_cc,
         "        fit_index = next_index++;\n"
         "        action_sheet_->addItem(QStringLiteral(\"Вписать в экран\"), \":/img/material/monitor.svg\");\n",
@@ -205,18 +190,16 @@ def apply(root: Path) -> None:
         "        action_sheet_->addItem(QStringLiteral(\"Правая кнопка мыши\"), \":/img/material/monitor.svg\");\n"
         "        rotate_index = next_index++;\n"
         "        action_sheet_->addItem(QStringLiteral(\"Повернуть экран\"), \":/img/material/refresh.svg\");\n"
-        "        lock_index = next_index++;\n"
-        "        action_sheet_->addItem(QStringLiteral(\"Заблокировать компьютер\"), \":/img/material/lock.svg\");\n")
+        )
     replace_once(window_cc,
         "[this, power_index, keyboard_index, fit_index,\n"
         "             ctrl_alt_del_index, users_index, disconnect_index](int index)",
-        "[this, power_index, keyboard_index, fit_index, right_index, lock_index, rotate_index,\n"
+        "[this, power_index, keyboard_index, fit_index, right_index, rotate_index,\n"
         "             ctrl_alt_del_index, users_index, disconnect_index](int index)")
     replace_once(window_cc,
         "        else if (index == fit_index)\n            view_->resetZoom();\n",
         "        else if (index == fit_index)\n            view_->resetZoom();\n"
         "        else if (index == right_index)\n            view_->sendRightClick();\n"
-        "        else if (index == lock_index)\n            onQuickLock();\n"
         "        else if (index == rotate_index)\n            rotateInterface();\n")
     replace_once(window_cc,
         "    if (fab_)\n        fab_->move(width() - fab_->width() - kFabMargin, height() - fab_->height() - kFabMargin);\n\n"
@@ -247,15 +230,6 @@ def apply(root: Path) -> None:
     replace_once(window_cc,
         "//--------------------------------------------------------------------------------------------------\n"
         "void DesktopWindow::showSessionActions()",
-        "//--------------------------------------------------------------------------------------------------\n"
-        "void DesktopWindow::onQuickLock()\n{\n"
-        "    if (!connected_)\n        return;\n\n"
-        "    const QString confirm = QStringLiteral(\"Заблокировать удалённый компьютер?\");\n"
-        "    if (power_control_available_)\n"
-        "        triggerPowerAction(proto::power::Control::ACTION_LOCK, confirm);\n"
-        "    else if (MessageDialog::confirm(this, QStringLiteral(\"Блокировка\"),\n"
-        "                                    confirm, QStringLiteral(\"Заблокировать\")))\n"
-        "        view_->sendWinLock();\n}\n\n"
         "//--------------------------------------------------------------------------------------------------\n"
         "void DesktopWindow::rotateInterface()\n{\n"
         "    if (!connected_)\n        return;\n"
