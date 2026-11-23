@@ -73,5 +73,5 @@
   "mobile12_overlay_file": "mobile12-input-modes.py",
   "mobile12_overlay_sha256": "c875fcf7e990f305df4de85b02d58c0213408b130b8b6837244eb5903dd054e0",
   "mobile12_test_file": "test_mobile12_input_modes.py",
-  "mobile12_test_sha256": "ad2ff6f850d70346a7a1587fd649c6969aa011596c2bd6582ba89f93a8973d50"
+  "mobile12_test_sha256": "ad005346352925fac4b5957895a2789c005fe293c93303407e45f219df944a79"
 }
