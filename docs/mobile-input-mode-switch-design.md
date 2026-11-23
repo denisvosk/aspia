@@ -40,9 +40,13 @@ text.
   The button is dark like other utility keys; fixed width/height and
   icon size across states. Do not change Shift/Backspace, number row,
   keyboard height or the KeyBar. Reduce spacer width minimally.
-- A brief press cycles mode. Do not cycle or send events when swiping
-  Space (RU/EN visual layout change is independent of transport mode).
-  Optionally long-press to show an explanation of reliability and risks.
+- **Mode changes only on long press (500 ms) and explicit selection**:
+  hold HID/TXT/BUF to open a small three-option in-app popup above the key,
+  then tap one mode or drag a held finger over it and release.
+  A **short press never changes input mode**. While BUF has an unfinished
+  draft, a short tap on BUF may open the explicit review/commit dialog.
+  No mode changes when swiping Space (RU/EN visual layout remains independent
+  of transport mode).
 - Start each **new connection** in `HID`; do not persist a dangerous BUF
   mode accidentally into a login/password field or next session.
   Indicate current mode in the key itself. Do not infer secure fields
