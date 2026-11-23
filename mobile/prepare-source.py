@@ -92,11 +92,19 @@ def main() -> int:
     if hashlib.sha256(mobile10_keyboard.read_bytes()).hexdigest() != lock["mobile10_samsung_overlay_sha256"]:
         raise RuntimeError("Mobile 10 Samsung keyboard overlay checksum mismatch")
     run(sys.executable, str(mobile10_keyboard), str(output), cwd=output)
+    mobile11_input = bundle / lock["mobile11_input_overlay_file"]
+    if hashlib.sha256(mobile11_input.read_bytes()).hexdigest() != lock["mobile11_input_overlay_sha256"]:
+        raise RuntimeError("Mobile 11 physical input overlay checksum mismatch")
+    run(sys.executable, str(mobile11_input), str(output), cwd=output)
+    mobile11_visual = bundle / lock["mobile11_visual_overlay_file"]
+    if hashlib.sha256(mobile11_visual.read_bytes()).hexdigest() != lock["mobile11_visual_overlay_sha256"]:
+        raise RuntimeError("Mobile 11 icon/font overlay checksum mismatch")
+    run(sys.executable, str(mobile11_visual), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
     print(f"Complete Aspia+ Mobile {lock['version']} source is ready: {output}")
-    print("Build instructions: .github/workflows/mobile-v10-build.yml and mobile/README.md")
+    print("Build instructions: .github/workflows/mobile-v11-build.yml and mobile/README.md")
     return 0
 
 
