@@ -77,8 +77,9 @@ require('configureAlternate(letters_[0][4]' in kb and
 require('void sig_text(const QString& text, bool russian_layout);' in header and
         '&DesktopView::onVirtualKeyboardText' in window and
         'sendKeyWithModifiers(usb)' in view and
-        'const QString ru = QStringLiteral(' in view,
-        'Physical key event delivery to nested Aspia must not regress')
+        'const QString ru = QStringLiteral(' in view and
+        'bool shift_needed = character.isUpper() && !command_modifier;' in view,
+        'Physical nested-Aspia input and no accidental Shift in Ctrl/Alt/Win shortcuts')
 require('QGuiApplication::clipboard()->text()' in window and
         'view_->onVirtualText(text)' in window,
         'Exact Unicode clipboard paste must remain')
