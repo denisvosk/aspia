@@ -23,6 +23,31 @@ check('footer->addWidget(mode_key_, 2)' in kb and
       'footer->addWidget(space_key_, 11)' in kb and
       'footer->addWidget(dot_key_, 2)' in kb,
       'mode key must replace comma to LEFT of full Samsung spacebar')
+# A short accidental tap must NEVER change the input transport.
+check('mode_hold_timer_->setInterval(500);' in kb and
+      'connect(mode_key_, &QPushButton::pressed' in kb and
+      'connect(mode_hold_timer_, &QTimer::timeout, this, &CompactKeyboard::showModePopup);' in kb and
+      'connect(mode_key_, &QPushButton::clicked' in kb and
+      'mode_hold_fired_' in h,
+      'mode change requires a 500ms hold rather than a quick tap')
+check('void CompactKeyboard::showModePopup()' in kb and
+      'mode_popup_->setFocusPolicy(Qt::NoFocus);' in kb and
+      'const QList<QPair<InputMode, QString>> options' in kb and
+      'void CompactKeyboard::selectInputMode(InputMode mode)' in kb and
+      'selectInputMode(selected);' in kb,
+      'long press must expose explicit HID/TXT/BUF menu choices')
+mode_click = kb.split('connect(mode_key_, &QPushButton::clicked, this, [this]()', 1)[1].split('dot_key_ = newKey', 1)[0]
+check('input_mode_ =' not in mode_click and
+      'emit sig_draftRequested(draft_)' in mode_click,
+      'short tap must not cycle transport; BUF draft confirmation remains accessible')
+check('if (mode_hold_fired_)' in mode_click and
+      'mode_hold_fired_ = false' in mode_click and
+      'mode_key_->setDown(false);' in kb,
+      'releasing a held mode key must not trigger a second action')
+check('mode_popup_->geometry().contains(release_pos)' in kb and
+      'selectInputMode(column == 0 ? InputMode::HID' in kb and
+      'if (input_mode_ == InputMode::BUF && !draft_.isEmpty())' in kb,
+      'hold-slide-release selection and buffered draft protection required')
 check('void CompactKeyboard::showPunctuationPopup()' in kb and
       'punctuation_timer_->setInterval(460);' in kb and
       'punctuation_popup_->setAttribute(Qt::WA_TransparentForMouseEvents)' in kb and
