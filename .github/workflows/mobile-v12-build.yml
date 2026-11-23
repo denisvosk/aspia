@@ -62,10 +62,10 @@ jobs:
         run: python "$GITHUB_WORKSPACE/mobile/test_edge_pan.py" .
       - name: Guard mobile 6 input and IME source
         run: python "$GITHUB_WORKSPACE/mobile/test_mobile6_ui.py" .
-      - name: Guard Mobile12 physical key order, held scan codes and retained Shift
-        run: python "$GITHUB_WORKSPACE/mobile/test_mobile12_input.py" .
-      - name: Guard Mobile12 smaller Shift/Backspace artwork and larger letters
-        run: python "$GITHUB_WORKSPACE/mobile/test_mobile12_visual.py" .
+      - name: Guard Mobile11 physical key order, held scan codes and retained Shift
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile11_input.py" .
+      - name: Guard Mobile11 smaller Shift/Backspace artwork and larger letters
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile11_visual.py" .
       - name: Guard Mobile12 modes, safe BUF, HID usages and punctuation swipe
         run: python "$GITHUB_WORKSPACE/mobile/test_mobile12_input_modes.py" .
       - name: Native build tools
