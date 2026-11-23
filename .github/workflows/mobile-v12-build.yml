@@ -1,0 +1,278 @@
+name: Aspia+ Mobile 2.7.2-mobile.12 APK and startup test
+
+on:
+  push:
+    branches: ['feature/mobile12-input-modes-punctuation']
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/mobile-v12-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: aspia-mobile-v9-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  QT_VERSION: '6.11.1'
+  VCPKG_MAX_CONCURRENCY: '4'
+  VCPKG_DISABLE_METRICS: '1'
+  GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+        working-directory: mobile-src
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache Gradle downloads for Mobile8 builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches/modules-2
+            ~/.gradle/wrapper/dists
+          key: mobile12-gradle-${{ runner.os }}-qt6111-jdk21-${{ hashFiles('mobile/source-lock.json') }}-v1
+          restore-keys: |
+            mobile12-gradle-${{ runner.os }}-qt6111-jdk21-
+      - name: Prepare pinned mobile source and startup fix
+        working-directory: ${{ github.workspace }}
+        run: python mobile/prepare-source.py --output mobile-src
+      - name: Guard native Android picker and importer
+        run: python "$GITHUB_WORKSPACE/mobile/test_document_picker.py" source/client/android/mobile_book_manager.cc
+      - name: Guard mobile 5 remote controls source
+        run: python "$GITHUB_WORKSPACE/mobile/test_controls_v5.py" .
+      - name: Test finite cursor edge pan and no ghost two-finger zoom
+        run: python "$GITHUB_WORKSPACE/mobile/test_edge_pan.py" .
+      - name: Guard mobile 6 input and IME source
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile6_ui.py" .
+      - name: Guard Mobile12 physical key order, held scan codes and retained Shift
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile12_input.py" .
+      - name: Guard Mobile12 smaller Shift/Backspace artwork and larger letters
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile12_visual.py" .
+      - name: Guard Mobile12 modes, safe BUF, HID usages and punctuation swipe
+        run: python "$GITHUB_WORKSPACE/mobile/test_mobile12_input_modes.py" .
+      - name: Native build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build pkg-config autoconf automake libtool nasm libgl1-mesa-dev libxkbcommon0
+          python -m pip install 'aqtinstall==3.3.0' 'cmake>=3.30,<4.0'
+      - name: Cache Qt
+        id: qt-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/Qt
+          key: mobile-qt-${{ runner.os }}-${{ env.QT_VERSION }}-android-arm64-v1
+      - name: Install Qt
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        run: |
+          aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt" --archives qtbase qttools qtsvg qttranslations qtdeclarative icu
+          aqt install-qt all_os android "$QT_VERSION" android_arm64_v8a -O "$RUNNER_TEMP/Qt" --archives qtbase qttools qtsvg qttranslations
+      - name: Provide Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Android SDK
+        run: |
+          python - <<'PY'
+          import subprocess
+          subprocess.run([
+              'sdkmanager', 'platform-tools', 'platforms;android-36',
+              'build-tools;36.0.0', 'ndk;27.2.12479018'
+          ], input='y\n' * 100, text=True, check=True)
+          PY
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          echo "QT_ANDROID_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/android_arm64_v8a" >> "$GITHUB_ENV"
+          echo "QT_HOST_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
+      - name: Cache compiled dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: mobile-vcpkg-${{ runner.os }}-${{ hashFiles('mobile-src/.gitmodules', 'mobile-src/vcpkg.json') }}-ndk27-qt6111-v1
+          restore-keys: mobile-vcpkg-${{ runner.os }}-
+      - name: Build OpenSSL with suffixed SONAMEs at link time
+        run: |
+          ci/build-android-openssl.sh "$RUNNER_TEMP/android-openssl-mobile12"
+          echo "ASPIA_ANDROID_TLS_DIR=$RUNNER_TEMP/android-openssl-mobile12" >> "$GITHUB_ENV"
+      - name: Configure Client only
+        run: |
+          cmake --preset mobile-android-linux \
+            -DASPIA_MOBILE_VERSION_NAME=2.7.2-mobile.12 \
+            -DASPIA_MOBILE_VERSION_CODE=20702012
+      - name: Route Gradle Maven Central requests via Google Cloud mirror
+        run: |
+          # Gradle 9.3.1 (from Qt 6.11.1) supports Maven settings mirrors.
+          # Avoid Maven Central HTTP 429 from shared GitHub-hosted runner IPs.
+          mkdir -p "$HOME/.m2" "$HOME/.gradle"
+          cat > "$HOME/.m2/settings.xml" <<'MAVEN'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <mirrors>
+              <mirror>
+                <id>google-maven-central</id>
+                <name>Google Cloud Maven Central Mirror</name>
+                <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+          </settings>
+          MAVEN
+          echo 'org.gradle.mirror.maven.settings=true' >> "$HOME/.gradle/gradle.properties"
+      - name: Build APK
+        run: cmake --build --preset mobile-android-linux-apk --parallel 4
+      - name: Collect the final unsigned APK and provenance
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib
+          import json
+          import os
+          import shutil
+          import subprocess
+          source = Path('builds/mobile-android-linux/source/client/android-build/build/outputs/apk/release')
+          candidates = list(source.glob('*unsigned.apk'))
+          if len(candidates) != 1:
+              raise RuntimeError(f'Expected exactly one final unsigned release APK, found {len(candidates)}')
+          output = Path('mobile-artifacts')
+          output.mkdir(exist_ok=True)
+          apk = output / 'aspia-plus-mobile-2.7.2-mobile.12-arm64-unsigned.apk'
+          shutil.copyfile(candidates[0], apk)
+          workspace = Path(os.environ['GITHUB_WORKSPACE'])
+          lock = json.loads((workspace / 'mobile/source-lock.json').read_text())
+          if lock['version'] != '2.7.2-mobile.12' or lock['version_code'] != 20702012:
+              raise RuntimeError('The pinned source lock does not describe mobile.7')
+          shutil.copyfile(workspace / 'mobile/source-lock.json', output / 'source-lock.json')
+          (output / 'source-commit.txt').write_text(subprocess.check_output(
+              ['git', '-C', str(workspace), 'rev-parse', 'HEAD'], text=True))
+          (output / 'upstream-commit.txt').write_text(subprocess.check_output(
+              ['git', 'rev-parse', 'HEAD'], text=True))
+          (output / 'SHA256SUMS.txt').write_text(
+              hashlib.sha256(apk.read_bytes()).hexdigest() + '  ' + apk.name + '\n')
+          PY
+      - name: Validate the final packaged ELF layout and APK metadata
+        run: |
+          python ci/check-android-apk.py \
+            --apk mobile-artifacts/aspia-plus-mobile-2.7.2-mobile.12-arm64-unsigned.apk \
+            --unsigned \
+            --version-name 2.7.2-mobile.12 \
+            --version-code 20702012 \
+            --sdk-root "$ANDROID_SDK_ROOT" \
+            --ndk-root "$ANDROID_NDK_ROOT" \
+            --output mobile-artifacts/package-check.json
+      - name: Upload the validated unsigned release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspia-plus-mobile-android-arm64
+          path: mobile-src/mobile-artifacts
+          retention-days: 30
+          if-no-files-found: error
+      - name: Preserve a failed package-check report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspia-mobile12-package-check-failure
+          path: mobile-src/mobile-artifacts/package-check.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  android-startup:
+    name: Android 12 ARM64 startup on KVM
+    needs: android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EMULATOR_API: '31'
+      EMULATOR_AVD: aspia-mobile12-api31
+      ANDROID_AVD_HOME: ${{ github.workspace }}/aspia-smoke-avd
+      ANDROID_EMULATOR_HOME: ${{ github.workspace }}/aspia-smoke-emulator
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the validated APK from this run
+        uses: actions/download-artifact@v4
+        with:
+          name: aspia-plus-mobile-android-arm64
+          path: release-apk
+      - name: Verify APK transport checksum
+        working-directory: release-apk
+        run: sha256sum --check SHA256SUMS.txt
+      - name: Provide Android command-line tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: ''
+      - name: Install emulator and Android system image
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import subprocess
+          image = 'system-images;android-' + os.environ['EMULATOR_API'] + ';google_apis;x86_64'
+          subprocess.run([
+              'sdkmanager', 'platform-tools', 'platforms;android-36',
+              'build-tools;36.0.0', 'emulator', image
+          ], input='y\n' * 100, text=True, check=True)
+          PY
+      - name: Enable KVM on the ephemeral runner
+        shell: bash
+        run: |
+          test -c /dev/kvm
+          sudo chmod 666 /dev/kvm
+          "$ANDROID_HOME/emulator/emulator" -accel-check
+      - name: Create an empty virtual phone
+        shell: bash
+        run: |
+          mkdir -p "$ANDROID_AVD_HOME" "$ANDROID_EMULATOR_HOME"
+          python - <<'PY'
+          import os
+          import subprocess
+          image = 'system-images;android-' + os.environ['EMULATOR_API'] + ';google_apis;x86_64'
+          subprocess.run([
+              'avdmanager', 'create', 'avd', '--force',
+              '--name', os.environ['EMULATOR_AVD'], '--device', 'pixel_2',
+              '--package', image
+          ], input='no\n', text=True, check=True)
+          PY
+      - name: Launch the validated ARM64 APK and observe for 60 seconds
+        shell: bash
+        run: |
+          python mobile/ci-startup-smoke.py \
+            --sdk-root "$ANDROID_HOME" \
+            --apk release-apk/aspia-plus-mobile-2.7.2-mobile.12-arm64-unsigned.apk \
+            --avd "$EMULATOR_AVD" \
+            --output startup-evidence \
+            --boot-timeout 600 \
+            --observe-seconds 60
+      - name: Upload startup evidence, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aspia-mobile12-api31-startup-evidence
+          path: startup-evidence
+          retention-days: 14
+          if-no-files-found: warn
