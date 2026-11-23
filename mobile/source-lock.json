@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile12 HID/TXT/BUF Android keyboard and punctuation hold implemented; CI and Samsung live acceptance pending",
+  "build_state": "Mobile12 input-mode switching now requires a 500ms hold and explicit popup choice; CI and Samsung real-device acceptance pending.",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -71,7 +71,7 @@
   "mobile11_visual_test_file": "test_mobile11_visual.py",
   "mobile11_visual_test_sha256": "b10536f8f4ea1928fe9c9dcf5b348527687bd560098036dd7aafd4e00869aed7",
   "mobile12_overlay_file": "mobile12-input-modes.py",
-  "mobile12_overlay_sha256": "c875fcf7e990f305df4de85b02d58c0213408b130b8b6837244eb5903dd054e0",
+  "mobile12_overlay_sha256": "af08a7a5cde1e88c838563b7c7ddf6ed8b96389567177641b622965042aa638e",
   "mobile12_test_file": "test_mobile12_input_modes.py",
-  "mobile12_test_sha256": "ad005346352925fac4b5957895a2789c005fe293c93303407e45f219df944a79"
+  "mobile12_test_sha256": "5cdc91063a510aaa6650647f0dc1ae0dd4b5c9f063466f4dd495d1bb23b673a1"
 }
