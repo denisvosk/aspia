@@ -36,8 +36,13 @@ def apply(root: Path):
     once(h, '    void changeLanguage();', '''    void changeLanguage();
     void showPunctuationPopup();
     void selectPunctuation(const QPoint& location);
-    void updateModeCaption();''')
+    void updateModeCaption();
+    void showModePopup();
+    void selectInputMode(InputMode mode);''')
     once(h, '    QPushButton* space_key_ = nullptr;', '''    QPushButton* mode_key_ = nullptr;
+    QWidget* mode_popup_ = nullptr;
+    QTimer* mode_hold_timer_ = nullptr;
+    bool mode_hold_fired_ = false;
     QPushButton* dot_key_ = nullptr;
     QWidget* punctuation_popup_ = nullptr;
     QList<QLabel*> punctuation_labels_;
@@ -65,16 +70,35 @@ def apply(root: Path):
     mode_face.setPixelSize(12);
     mode_key_->setFont(mode_face);
     footer->addWidget(mode_key_, 2);
+    // Tapping never changes the input route: hold 500ms, then explicitly
+    // choose HID/TXT/BUF in a separate in-app popup.
+    mode_hold_timer_ = new QTimer(this);
+    mode_hold_timer_->setSingleShot(true);
+    mode_hold_timer_->setInterval(500);
+    mode_key_->installEventFilter(this);
+    connect(mode_key_, &QPushButton::pressed, this, [this]()
+    {
+        mode_hold_fired_ = false;
+        mode_hold_timer_->start();
+    });
+    connect(mode_key_, &QPushButton::released, mode_hold_timer_, &QTimer::stop);
+    connect(mode_hold_timer_, &QTimer::timeout, this, &CompactKeyboard::showModePopup);
     connect(mode_key_, &QPushButton::clicked, this, [this]()
     {
-        if (input_mode_ == InputMode::BUF && !draft_.isEmpty())
+        if (mode_hold_fired_)
         {
-            emit sig_draftRequested(draft_);
+            mode_hold_fired_ = false;  // no second activation on finger release
             return;
         }
-        input_mode_ = (input_mode_ == InputMode::HID) ? InputMode::TXT :
-                      (input_mode_ == InputMode::TXT) ? InputMode::BUF : InputMode::HID;
-        updateModeCaption();
+        if (mode_popup_ && mode_popup_->isVisible())
+        {
+            mode_popup_->hide();
+            return;
+        }
+        // A quick tap in BUF can submit a pending draft for confirmation,
+        // but does not ever switch the input method.
+        if (input_mode_ == InputMode::BUF && !draft_.isEmpty())
+            emit sig_draftRequested(draft_);
     });''')
 
     once(cc, '''    QPushButton* dot = newKey(QStringLiteral("."));
@@ -116,7 +140,27 @@ def apply(root: Path):
     # Touch delivery: the dot button keeps mouse-grab throughout the hold;
     # a child QWidget instead of QMenu avoids losing mouse-release events.
     # The popup ignores pointer events, so the dot still receives the drag.
-    once(cc, '    if (watched == space_key_)\n', '''    if (watched == dot_key_)
+    once(cc, '    if (watched == space_key_)\n', '''    if (watched == mode_key_ && event->type() == QEvent::MouseButtonRelease &&
+        mode_hold_fired_ && mode_popup_ && mode_popup_->isVisible())
+    {
+        const auto* mouse = static_cast<QMouseEvent*>(event);
+        const QPoint release_pos = mode_key_->mapTo(this, mouse->position().toPoint());
+        if (mode_popup_->geometry().contains(release_pos))
+        {
+            // Optional Samsung-style hold+slide+release selection.
+            const int column = qBound(0,
+                (release_pos.x() - mode_popup_->x()) * 3 /
+                    qMax(1, mode_popup_->width()), 2);
+            mode_key_->setDown(false);
+            mode_popup_->hide();
+            selectInputMode(column == 0 ? InputMode::HID :
+                            column == 1 ? InputMode::TXT : InputMode::BUF);
+            mode_hold_fired_ = false;
+            event->accept();
+            return true;
+        }
+    }
+    if (watched == dot_key_)
     {
         if (event->type() == QEvent::MouseButtonPress)
         {
@@ -154,7 +198,73 @@ def apply(root: Path):
     if (watched == space_key_)
 ''')
 
-    once(cc, 'void CompactKeyboard::changeLanguage()\n{', '''void CompactKeyboard::showPunctuationPopup()
+    once(cc, 'void CompactKeyboard::changeLanguage()\n{', '''void CompactKeyboard::showModePopup()
+{
+    if (!mode_key_ || !mode_key_->isDown())
+        return;
+    mode_hold_fired_ = true;
+    if (!mode_popup_)
+    {
+        mode_popup_ = new QWidget(this);
+        mode_popup_->setObjectName(QStringLiteral("inputModePopup"));
+        mode_popup_->setFocusPolicy(Qt::NoFocus);
+        mode_popup_->setAttribute(Qt::WA_StyledBackground, true);
+        mode_popup_->setStyleSheet(dark_theme_ ?
+            QStringLiteral("QWidget#inputModePopup{background:#222226;border:1px solid #6b6b70;"
+                           "border-radius:9px;}"
+                           "QPushButton{background:#343438;color:#f7f7f7;border:0;"
+                           "border-radius:6px;font-size:15px;}"
+                           "QPushButton:pressed{background:#398bf3;}") :
+            QStringLiteral("QWidget#inputModePopup{background:#e3e3e7;border:1px solid #999;"
+                           "border-radius:9px;}"
+                           "QPushButton{background:#cbcbcf;color:#171717;border:0;"
+                           "border-radius:6px;font-size:15px;}"
+                           "QPushButton:pressed{background:#398bf3;}"));
+        auto* choices = new QHBoxLayout(mode_popup_);
+        choices->setContentsMargins(4, 4, 4, 4);
+        choices->setSpacing(4);
+        const QList<QPair<InputMode, QString>> options = {
+            {InputMode::HID, QStringLiteral("HID")},
+            {InputMode::TXT, QStringLiteral("TXT")},
+            {InputMode::BUF, QStringLiteral("BUF")}
+        };
+        for (const auto& option : options)
+        {
+            auto* key = new QPushButton(option.second, mode_popup_);
+            key->setFocusPolicy(Qt::NoFocus);
+            key->setMinimumHeight(38);
+            choices->addWidget(key, 1);
+            connect(key, &QPushButton::clicked, this, [this, selected = option.first]()
+            {
+                mode_popup_->hide();
+                selectInputMode(selected);
+            });
+        }
+    }
+    const int popup_width = qMin(qMax(195, width() / 2), width() - 12);
+    const QPoint key_pos = mode_key_->mapTo(this, QPoint(0, 0));
+    const int left = qBound(6, key_pos.x() + mode_key_->width() / 2 - popup_width / 2,
+                            qMax(6, width() - popup_width - 6));
+    mode_popup_->setGeometry(left, qMax(0, key_pos.y() - 58), popup_width, 52);
+    mode_popup_->raise();
+    mode_popup_->show();
+}
+
+void CompactKeyboard::selectInputMode(InputMode mode)
+{
+    if (mode == input_mode_)
+        return;
+    if (input_mode_ == InputMode::BUF && !draft_.isEmpty())
+    {
+        // Cannot silently throw away typed BUF content on mode switch.
+        emit sig_draftRequested(draft_);
+        return;
+    }
+    input_mode_ = mode;
+    updateModeCaption();
+}
+
+void CompactKeyboard::showPunctuationPopup()
 {
     if (!dot_key_ || !dot_key_->isDown())
         return;
