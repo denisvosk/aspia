@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Mobile12 source-level release gates. Real Samsung and nested-session tests remain required."""
 from pathlib import Path
+import re
 import sys
 
 root = Path(sys.argv[1]).resolve()
@@ -37,7 +38,7 @@ check('void CompactKeyboard::showModePopup()' in kb and
       'selectInputMode(selected);' in kb,
       'long press must expose explicit HID/TXT/BUF menu choices')
 mode_click = kb.split('connect(mode_key_, &QPushButton::clicked, this, [this]()', 1)[1].split('dot_key_ = newKey', 1)[0]
-check('input_mode_ =' not in mode_click and
+check(not re.search(r'\binput_mode_\s*=(?!=)', mode_click) and
       'emit sig_draftRequested(draft_)' in mode_click,
       'short tap must not cycle transport; BUF draft confirmation remains accessible')
 check('if (mode_hold_fired_)' in mode_click and
