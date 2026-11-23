@@ -1,60 +1,52 @@
-# Aspia+ Mobile 2.7.2-mobile.10 — Samsung reduced keyboard, better KeyBar
+# Aspia+ Mobile 2.7.2-mobile.11 — reliable nested Aspia typing, refined icons
 
-This experimental Android 12+ ARM64 build revises Mobile9 following six
-side-by-side screenshots from Samsung S10 (portrait + landscape).
-The physical USB-scancode text path from Mobile9 is unchanged: the user has
-verified that typing reaches a **nested Aspia client** on a Windows desktop.
-The selected Android RU/EN layout still needs to match the active Windows
-keyboard layout for scan-code-accurate text.
+Experimental Android 12+ ARM64 update after hands-on Samsung S10 testing.
+Keeps Mobile10's layout, swipe-to-switch RU/EN spacebar, dark corner keys,
+three-mode Shift, compact 30px horizontal KeyBar and network compatibility.
 
-## Samsung-like keyboard
+## Changes
 
-- A genuinely shorter number row (4:5 proportion vs letter rows), larger
-  19px digit glyphs, 18px letter glyphs, near-black gaps and grey keycaps.
-- Extra lower padding below the spacebar to avoid accidental KeyBar taps.
-- Darker **!#1**, Shift, Backspace and Enter utility keys, with vector
-  Backspace, Shift and Enter icons rather than unreliable Unicode glyphs.
-- One uninterrupted wide spacebar, containing **< Русский >** or
-  **< English (US) >** as visual labels. **Swipe left or right across the
-  spacebar to change languages; arrows are not separate buttons.**
-  Tapping inserts one space; a horizontal swipe inserts no space.
-- Fixed-width, stable Shift icon:
-  **white outline** = lowercase, **blue outline** = one uppercase letter,
-  **white filled** = Caps Lock. From lowercase tap once for one-shot, tap
-  again for Caps Lock, tap again for lowercase. Letters do not shift when
-  the indicator changes. Initially the keyboard uses one-shot upper-case.
-- Uppercase state returns to lowercase after one letter, and after
-  end-of-sentence punctuation or Enter the next letter starts in one-shot.
-  Do not claim automatic sentence detection across remote applications.
-- Russian 11-letter rows, English 10/9/7 rows: the English middle row is
-  indented while the bottom Shift and Backspace are wider.
-- Hold Russian Е for Ё, Ь for Ъ, no top emoji/mic/settings toolbar,
-  and 75% centered keyboard width in landscape.
+- **Nested remote session typing:** touch-screen letters, numbers and
+  Backspace/Enter now travel as **ordered USB scan-code down/up events** with
+  a 32 ms press and a 6 ms release gap rather than a 0-ms burst. This aims
+  to improve delivery through two consecutive Aspia remote desktop sessions.
+  The actual double-hop scenario still needs testing on the phone.
+- **Finger tolerance:** accept a short tap even when the finger moves just
+  outside the key during release, within a 20px Manhattan movement budget.
+  A long movement does not become a letter.
+- **Smaller icons, not smaller keys:** Shift symbol reduced from 31x30px to
+  21x20px; Backspace from 32x25px to 21x17px (~1.5x smaller). Key rectangles,
+  touch areas and fixed Shift geometry are unchanged.
+- **Larger letters:** font size 20px instead of 18px, retaining the smaller
+  number row with 19px digits. English/Russian key positions unchanged.
+- **Shift itself is unchanged:** white outlined / blue one-shot / filled
+  Caps Lock behavior from Mobile10 remains in place.
+- Android biometric relock, keyboard foreground resume, LMB dragging,
+  pinch/scroll, AAB file selection and paste of exact Unicode text all
+  retain their previous paths.
 
-## Auxiliary control rail
+## Important: RU/EN is not yet synchronized with remote Windows
 
-- Same **ЛКМ**, **Клав.**, **Вставить**, Ctrl, Alt, Shift, Esc and
-  other working remote commands from Mobile9.
-- Rail reduced from Mobile9 33 to **30 Qt logical pixels**; keys 26px
-  and captions vertically centered. Only **horizontal** finger-scrolling
-  is allowed; vertical scrollbar movement and kinetic overshoot are
-  disabled. Removed **Впис.** remains absent.
-- On returning from biometric unlock, suppress Samsung IME when the
-  custom keyboard was open. Do not bypass the normal relock policy.
-- Existing pan/zoom, clipboard paste and local AAB stay untouched.
+The on-screen RU/EN layout switches with the spacebar swipe **on the
+phone only**. USB scan codes produce characters using the active layout of
+the focused **remote Windows** (or of the computer reached through a nested
+Aspia session). For Russian keys to generate Russian text, set the active
+remote Windows language to Russian, and likewise for English. The old
+Aspia 2.7 Host/Router protocol does not report the focused Windows input
+language back to this Android client, so one cannot reliably force the
+correct layout just by changing the key labels on the phone. Do not claim
+that the layout-synchronization bug is solved in this Mobile11 build.
 
-## Validation and release caveats
+The «Вставить» button retains the existing Unicode clipboard mechanism;
+it is separate from the physical-key stream. For exact text in normal
+Windows fields, this can be used when hardware scan codes are unsuitable.
 
-This branch uses `mobile/prepare-source.py` with hash-pinned
-`mobile10-keybar.py` and `mobile10-samsung.py` overlays; compilation,
-package checks, and Android 12 emulator startup are CI gates.
-A green emulator startup does not demonstrate the keyboard visual match,
-a full language-swipe gesture on a real Samsung, or biometric-cycle
-behavior. Test landscape, portrait, Shift state transitions, space
-swipes, LMB, clipboard and resume before calling the release stable.
+## Validation
 
-Workflows: `.github/workflows/mobile-v10-build.yml`.
-Android application ID and signing identity stay identical to Mobile9;
-Mobile9 remains available for fallback testing.
+The hash-pinned Mobile11 input and visual overlays run after Mobile10
+in `mobile/prepare-source.py`. CI runs dedicated regression checks plus
+the Android 12 emulator startup smoke test. **Green CI does not certify
+the responsiveness of typing through two Windows Aspia hops**; the user
+must test it on Samsung S10. Mobile10 remains available to roll back.
 
-Aspia+ is an unofficial Aspia fork under GPL-3.0.
+This is an unofficial fork of Aspia, distributed under GPL-3.0.
