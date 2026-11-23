@@ -66,10 +66,14 @@ check('kMaxDraft = 4096' in kb and
       'onClipboardEvent(event);' in w and
       'question.clickedButton() == discard' in w,
       'BUF must collect privately and ask explicitly before remote clipboard overwrite')
-check('QGuiApplication::clipboard()->setText(' not in w and
-      'QTimer::singleShot(500' not in w and
-      'sendCtrlV()' not in w,
-      'must not secretly overwrite local clipboard or automatically paste before remote sync')
+# Scope the negative checks to the BUF branch: the pre-existing DesktopWindow
+# can independently use Qt timers and clipboard APIs for ordinary sessions.
+draft_handler = w.split('connect(compact_keyboard_, &CompactKeyboard::sig_draftRequested, this,', 1)[1]
+draft_handler = draft_handler.split('compact_keyboard_->discardDraft();\n            QMessageBox::information', 1)[0]
+check('QGuiApplication::clipboard()->setText(' not in draft_handler and
+      'QTimer::singleShot(500' not in draft_handler and
+      'sendCtrlV()' not in draft_handler,
+      'BUF must not silently touch phone clipboard or auto-paste')
 check('QStringLiteral("ЛКМ")' in bar and
       'QStringLiteral("Клав.")' in bar and
       'QStringLiteral("Вставить")' in bar,
