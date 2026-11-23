@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.9",
-  "version_code": 20702009,
+  "version": "2.7.2-mobile.10",
+  "version_code": 20702010,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile9 Samsung layout and physical text-key events committed; CI and nested-session acceptance pending",
+  "build_state": "Mobile10 user screenshot-driven keyboard geometry and horizontal-only KeyBar implemented; live Samsung acceptance pending",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -31,9 +31,9 @@
   "picker_fix_file": "android-document-picker.patch",
   "picker_fix_sha256": "e5fe9d1f393d2e45411d754e3d41894605b497d7af16f9c7b4fb5b6ce8eba9f4",
   "previous_release": {
-    "version": "2.7.2-mobile.8",
-    "github_run_id": 45077247143,
-    "user_verified": "Samsung S10: single touch keyboard accepts ordinary desktop fields, nested Aspia fails for Unicode VK_PACKET; key spacing/background/Backspace and KeyBar height need changes."
+    "version": "2.7.2-mobile.9",
+    "github_run_id": 45082820607,
+    "user_verified": "Samsung S10: physical character input through a nested Aspia desktop session works; KeyBar captions too low and vertical scroll; Samsung language swipe/Shift and utility keys requested."
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
   "controls_overlay_sha256": "aef96ebb94d435da8c38e354b87c2fc41b3990d5306daeda373af5809f611083",
@@ -55,5 +55,11 @@
   "mobile9_overlay_file": "mobile9-fixes.py",
   "mobile9_overlay_sha256": "06590537d7562527c0fda9f8345b4a6bb0aef31806ed989304cc6b0b7ba07cc5",
   "mobile9_test_file": "test_mobile9_keyboard.py",
-  "mobile9_test_sha256": "d53a75970e27b1e314d45a1ee5d60607c2b4ccacfabb2c4568e7861c64f6161f"
+  "mobile9_test_sha256": "d53a75970e27b1e314d45a1ee5d60607c2b4ccacfabb2c4568e7861c64f6161f",
+  "mobile10_keybar_overlay_file": "mobile10-keybar.py",
+  "mobile10_keybar_overlay_sha256": "ecf91b5f96844d06c342b74624a787e8b1284cd44f7aeb0306de08b1705554fd",
+  "mobile10_samsung_overlay_file": "mobile10-samsung.py",
+  "mobile10_samsung_overlay_sha256": "246582bf5440b98c08740300b669abfd7b1b1e8d5be3b4503a3fdf960061fc75",
+  "mobile10_test_file": "test_mobile10_keyboard.py",
+  "mobile10_test_sha256": "900d3be6474b5fc2f9e2791fbfd86646c2cfe50315f62f17800a7bdc41f0aceb"
 }
