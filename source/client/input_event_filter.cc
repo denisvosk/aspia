@@ -17,6 +17,7 @@
 //
 
 #include "client/input_event_filter.h"
+#include "common/clipboard_file_transfer.h"
 
 #include "base/logging.h"
 
@@ -127,7 +128,7 @@ std::optional<proto::ClipboardEvent> InputEventFilter::sendClipboardEvent(
     if (session_type_ != proto::SESSION_TYPE_DESKTOP_MANAGE)
         return std::nullopt;
 
-    if (network_overflow_)
+    if (network_overflow_ && event.mime_type() != common::kFileClipboardMime)
         return std::nullopt;
 
     if (!clipboard_enabled_)

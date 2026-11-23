@@ -21,14 +21,17 @@
 
 #include "base/ipc/ipc_channel.h"
 #include "base/memory/serializer.h"
+#include "common/clipboard_monitor.h"
 #include "proto/host_internal.pb.h"
+
+#include <set>
 
 namespace host {
 
 class UserSessionAgentProxy;
 class UserSessionWindowProxy;
 
-class UserSessionAgent final : public base::IpcChannel::Listener
+class UserSessionAgent final : public base::IpcChannel::Listener, public common::Clipboard::Delegate
 {
 public:
     enum class Status
@@ -63,6 +66,9 @@ public:
     void start();
 
 protected:
+    // common::Clipboard::Delegate implementation.
+    void onClipboardEvent(const proto::ClipboardEvent& event) final;
+
     // base::IpcChannel::Listener implementation.
     void onIpcDisconnected() final;
     void onIpcMessageReceived(const base::ByteArray& buffer) final;
@@ -89,6 +95,8 @@ private:
     proto::internal::UiToService outgoing_message_;
 
     ClientList clients_;
+    std::set<uint32_t> file_clipboard_peers_;
+    std::unique_ptr<common::ClipboardMonitor> file_clipboard_;
 
     DISALLOW_COPY_AND_ASSIGN(UserSessionAgent);
 };

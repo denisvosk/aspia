@@ -17,6 +17,7 @@
 //
 
 #include "common/clipboard.h"
+#include "common/clipboard_file_transfer.h"
 
 #include "base/logging.h"
 
@@ -67,7 +68,7 @@ bool compress(const std::string& in, std::string* out)
 }
 
 //--------------------------------------------------------------------------------------------------
-bool decompress(const std::string& in, std::string* out)
+bool decompress(const std::string& in, std::string* out, size_t limit)
 {
     if (in.empty())
         return false;
@@ -85,7 +86,7 @@ bool decompress(const std::string& in, std::string* out)
         return false;
     }
 
-    if (!output_size)
+    if (!output_size || output_size > limit)
         return false;
 
     uint8_t* output_data = outputBuffer(out, static_cast<size_t>(output_size));
@@ -98,7 +99,14 @@ bool decompress(const std::string& in, std::string* out)
         return false;
     }
 
-    return true;
+    return ret == output_size;
+}
+
+bool validFormatType(proto::ClipboardEvent::Format::Type type)
+{
+    return type == proto::ClipboardEvent::Format::RTF ||
+           type == proto::ClipboardEvent::Format::HTML ||
+           type == proto::ClipboardEvent::Format::PNG;
 }
 
 } // namespace
@@ -114,19 +122,23 @@ void Clipboard::start(Delegate* delegate)
 //--------------------------------------------------------------------------------------------------
 void Clipboard::injectClipboardEvent(const proto::ClipboardEvent& event)
 {
+    if (event.mime_type() == kFileClipboardMime)
+    {
+        last_data_.clear();
+        last_formats_.clear();
+        setFileData(event);
+        return;
+    }
+    if (event.ByteSizeLong() > kClipboardContentWireLimit || event.format_size() > 3) return;
+    std::string text;
     if (event.mime_type() == kMimeTypeCompressedTextUtf8)
     {
-        std::string decompressed_data;
-        if (!decompress(event.data(), &decompressed_data))
+        if (!decompress(event.data(), &text, kClipboardContentDecodedLimit))
             return;
-
-        // Store last injected data.
-        last_data_ = std::move(decompressed_data);
     }
     else if (event.mime_type() == kMimeTypeTextUtf8)
     {
-        // Store last injected data.
-        last_data_ = event.data();
+        text = event.data();
     }
     else
     {
@@ -134,19 +146,47 @@ void Clipboard::injectClipboardEvent(const proto::ClipboardEvent& event)
         return;
     }
 
-    setData(last_data_);
+    // Validate/decompress the complete bundle before changing the clipboard.
+    proto::ClipboardEvent content;
+    size_t remaining = kClipboardContentDecodedLimit - text.size();
+    unsigned seen = 0;
+    for (const auto& format : event.format())
+    {
+        if (!validFormatType(format.type()) || (seen & (1u << format.type()))) return;
+        seen |= 1u << format.type();
+        auto* decoded = content.add_format();
+        decoded->set_type(format.type());
+        if (format.compressed())
+        {
+            if (!decompress(format.data(), decoded->mutable_data(), remaining)) return;
+        }
+        else
+        {
+            if (format.data().size() > remaining) return;
+            decoded->set_data(format.data());
+        }
+        if (decoded->data().empty()) return;
+        remaining -= decoded->data().size();
+    }
+    last_data_ = std::move(text);
+    last_formats_ = content.SerializeAsString();
+    setContent(last_data_, content);
 }
 
 //--------------------------------------------------------------------------------------------------
 void Clipboard::clearClipboard()
 {
+    last_data_.clear();
+    last_formats_.clear();
     setData(std::string());
 }
 
 //--------------------------------------------------------------------------------------------------
-void Clipboard::onData(const std::string& data)
+void Clipboard::onData(const std::string& data, const proto::ClipboardEvent& content)
 {
-    if (last_data_ == data)
+    if (data.size() > kClipboardContentDecodedLimit || content.format_size() > 3) return;
+    const std::string formats = content.SerializeAsString();
+    if (last_data_ == data && last_formats_ == formats)
         return;
 
     proto::ClipboardEvent event;
@@ -166,8 +206,45 @@ void Clipboard::onData(const std::string& data)
         event.set_data(data);
     }
 
+    size_t remaining = kClipboardContentDecodedLimit - data.size();
+    unsigned seen = 0;
+    for (const auto& format : content.format())
+    {
+        if (!validFormatType(format.type()) || format.compressed() || format.data().empty() ||
+            (seen & (1u << format.type())) || format.data().size() > remaining) return;
+        seen |= 1u << format.type();
+        remaining -= format.data().size();
+        auto* encoded = event.add_format();
+        *encoded = format;
+        std::string compressed;
+        if (format.data().size() > kMinSizeToCompress && compress(format.data(), &compressed) &&
+            compressed.size() < format.data().size())
+        {
+            encoded->set_data(std::move(compressed));
+            encoded->set_compressed(true);
+        }
+    }
+    if (event.ByteSizeLong() > kClipboardContentWireLimit)
+    {
+        LOG(LS_ERROR) << "Clipboard content exceeds transfer limit; using plain text";
+        event.clear_format();
+        if (data.empty() || event.ByteSizeLong() > kClipboardContentWireLimit) return;
+    }
+    last_data_ = data;
+    last_formats_ = formats;
+
     if (delegate_)
         delegate_->onClipboardEvent(event);
+}
+
+void Clipboard::sendEvent(const proto::ClipboardEvent& event)
+{
+    if (event.mime_type() == kFileClipboardMime)
+    {
+        last_data_.clear();
+        last_formats_.clear();
+    }
+    if (delegate_) delegate_->onClipboardEvent(event);
 }
 
 } // namespace common

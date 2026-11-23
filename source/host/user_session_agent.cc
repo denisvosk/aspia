@@ -19,6 +19,8 @@
 #include "host/user_session_agent.h"
 
 #include "base/logging.h"
+#include "base/message_loop/message_loop.h"
+#include "common/clipboard_file_transfer.h"
 #include "host/host_ipc_storage.h"
 #include "host/user_session_window_proxy.h"
 
@@ -73,6 +75,8 @@ void UserSessionAgent::start()
 //--------------------------------------------------------------------------------------------------
 void UserSessionAgent::onIpcDisconnected()
 {
+    file_clipboard_.reset();
+    file_clipboard_peers_.clear();
     LOG(LS_INFO) << "IPC channel disconncted";
     window_proxy_->onStatusChanged(Status::DISCONNECTED_FROM_SERVICE);
 }
@@ -88,6 +92,32 @@ void UserSessionAgent::onIpcMessageReceived(const base::ByteArray& buffer)
         return;
     }
 
+    if (incoming_message_.has_file_clipboard_event())
+    {
+#if defined(OS_WIN)
+        const auto& event = incoming_message_.file_clipboard_event();
+        proto::ClipboardFile message;
+        if (!common::parseFileClipboard(event, &message)) return;
+        if (message.type() == proto::ClipboardFile::HELLO)
+        {
+            file_clipboard_peers_.insert(message.peer_id());
+            if (!file_clipboard_)
+            {
+                file_clipboard_ = std::make_unique<common::ClipboardMonitor>();
+                file_clipboard_->start(base::MessageLoop::current()->taskRunner(), this);
+                LOG(LS_INFO) << "File clipboard started in interactive Host process";
+            }
+        }
+        if (file_clipboard_)
+            file_clipboard_->injectClipboardEvent(event);
+        if (message.type() == proto::ClipboardFile::DISCONNECT)
+        {
+            file_clipboard_peers_.erase(message.peer_id());
+            if (file_clipboard_peers_.empty()) file_clipboard_.reset();
+        }
+#endif
+        return;
+    }
     if (incoming_message_.has_connect_confirmation_request())
     {
         const proto::internal::ConnectConfirmationRequest& request =
@@ -159,6 +189,16 @@ void UserSessionAgent::onIpcMessageReceived(const base::ByteArray& buffer)
 }
 
 //--------------------------------------------------------------------------------------------------
+void UserSessionAgent::onClipboardEvent(const proto::ClipboardEvent& event)
+{
+    proto::ClipboardFile message;
+    if (!ipc_channel_ || !common::parseFileClipboard(event, &message) ||
+        !file_clipboard_peers_.count(message.peer_id())) return;
+    outgoing_message_.Clear();
+    *outgoing_message_.mutable_file_clipboard_event() = event;
+    ipc_channel_->send(serializer_.serialize(outgoing_message_));
+}
+
 void UserSessionAgent::onIpcMessageWritten(base::ByteArray&& buffer)
 {
     serializer_.addBuffer(std::move(buffer));

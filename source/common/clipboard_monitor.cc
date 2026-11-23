@@ -44,6 +44,7 @@ ClipboardMonitor::ClipboardMonitor()
 ClipboardMonitor::~ClipboardMonitor()
 {
     LOG(LS_INFO) << "Dtor";
+    lifetime_.reset();
     thread_->stop();
 }
 
@@ -143,7 +144,10 @@ void ClipboardMonitor::onClipboardEvent(const proto::ClipboardEvent& event)
 {
     if (!caller_task_runner_->belongsToCurrentThread())
     {
-        caller_task_runner_->postTask(std::bind(&ClipboardMonitor::onClipboardEvent, this, event));
+        caller_task_runner_->postTask([this, weak = weak_lifetime_, event]
+        {
+            if (weak.lock()) onClipboardEvent(event);
+        });
         return;
     }
 

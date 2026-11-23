@@ -1,0 +1,29 @@
+# Paste INSIDE the existing https://192.0.2.1 site block.
+# Keep its TLS configuration, root and file_server; do not change the bot vhost.
+handle_path /updates/* {
+    root * C:/Web/Aspia/updates
+    header Cache-Control "no-store"
+
+    handle /update.php {
+        header Content-Type "application/xml; charset=utf-8"
+        @host_x64 query package=host os=windows arch=x86_64 version=2.7.0
+        @host_x86 query package=host os=windows arch=x86 version=2.7.0
+        handle @host_x64 {
+            rewrite * /host-x86_64.xml
+            file_server
+        }
+        handle @host_x86 {
+            rewrite * /host-x86.xml
+            file_server
+        }
+        handle {
+            respond "<no-update/>" 200
+        }
+    }
+    handle /files/* {
+        file_server
+    }
+    handle {
+        respond 404
+    }
+}

@@ -17,6 +17,7 @@
 //
 
 #include "host/desktop_session_agent.h"
+#include "common/clipboard_file_transfer.h"
 
 #include "base/logging.h"
 #include "base/power_controller.h"
@@ -187,6 +188,12 @@ void DesktopSessionAgent::onIpcMessageReceived(const base::ByteArray& buffer)
     }
     else if (incoming_message_->has_clipboard_event())
     {
+        proto::ClipboardFile file;
+        if (common::parseFileClipboard(incoming_message_->clipboard_event(), &file))
+        {
+            if (file.type() == proto::ClipboardFile::HELLO) clipboard_file_peers_.insert(file.peer_id());
+            else if (file.type() == proto::ClipboardFile::DISCONNECT) clipboard_file_peers_.erase(file.peer_id());
+        }
         if (clipboard_monitor_)
         {
             clipboard_monitor_->injectClipboardEvent(incoming_message_->clipboard_event());
@@ -569,6 +576,13 @@ void DesktopSessionAgent::setEnabled(bool enable)
         // thread. Create a separate thread.
         clipboard_monitor_ = std::make_unique<common::ClipboardMonitor>();
         clipboard_monitor_->start(io_task_runner_, this);
+        for (uint32_t peer : clipboard_file_peers_)
+        {
+            proto::ClipboardFile message;
+            message.set_type(proto::ClipboardFile::HELLO);
+            message.set_peer_id(peer);
+            clipboard_monitor_->injectClipboardEvent(common::fileClipboardEvent(message));
+        }
 
         // Create a shared memory factory.
         // We will receive notifications of all creations and destruction of shared memory.

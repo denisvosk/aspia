@@ -65,6 +65,8 @@ public:
     void setCursorPosition(const proto::CursorPosition& cursor_position);
     void setScreenList(const proto::ScreenList& list);
     void setScreenType(const proto::ScreenType& type);
+    void syncFileClipboard();
+    void disconnectFileClipboard();
     void injectClipboardEvent(const proto::ClipboardEvent& event);
 
     const DesktopSession::Config& desktopSessionConfig() const { return desktop_session_config_; }
@@ -81,6 +83,11 @@ protected:
 #endif // defined(OS_WIN)
 
 private:
+    void readClipboard(const proto::ClipboardEvent& event);
+    bool clipboard_enabled_ = false;
+    bool rich_clipboard_enabled_ = false;
+    bool file_clipboard_enabled_ = false;
+
     void readExtension(const proto::DesktopExtension& extension);
     void readConfig(const proto::DesktopConfig& config);
     void readSelectScreenExtension(const std::string& data);

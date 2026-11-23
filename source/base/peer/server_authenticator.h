@@ -41,6 +41,8 @@ public:
         DISABLE // Anonymous access is disabled.
     };
 
+    uint32_t allowedSessionTypes() const { return session_types_; }
+
     // Sets the user list.
     void setUserList(base::local_shared_ptr<UserListBase> user_list);
 

@@ -17,6 +17,7 @@
 //
 
 #include "host/user_session.h"
+#include "common/clipboard_file_transfer.h"
 
 #include "base/location.h"
 #include "base/logging.h"
@@ -119,6 +120,8 @@ UserSession::~UserSession()
     LOG(LS_INFO) << "Dtor (sid=" << session_id_
                  << " type=" << typeToString(type_)
                  << " state=" << stateToString(state_) << ")";
+    // File clipboard cleanup calls back into this object; keep IPC buffers alive.
+    desktop_clients_.clear();
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -224,6 +227,8 @@ void UserSession::restart(std::unique_ptr<base::IpcChannel> channel)
         };
 
         send_connection_list(desktop_clients_);
+        for (const auto& client : desktop_clients_)
+            static_cast<ClientSessionDesktop*>(client.get())->syncFileClipboard();
         send_connection_list(file_transfer_clients_);
         send_connection_list(system_info_clients_);
         send_connection_list(text_chat_clients_);
@@ -631,6 +636,21 @@ void UserSession::onIpcMessageReceived(const base::ByteArray& buffer)
         return;
     }
 
+    if (incoming_message_.has_file_clipboard_event())
+    {
+        proto::ClipboardFile message;
+        const auto& event = incoming_message_.file_clipboard_event();
+        if (!common::parseFileClipboard(event, &message) ||
+            message.type() == proto::ClipboardFile::HELLO ||
+            message.type() == proto::ClipboardFile::DISCONNECT ||
+            desktop_session_proxy_->isPaused() || !file_clipboard_desktop_) return;
+        // ClientSessionDesktop rechecks negotiation, permission and routing ID.
+        for (const auto& client : desktop_clients_)
+            if (client->id() == message.peer_id())
+                static_cast<ClientSessionDesktop*>(client.get())->injectClipboardEvent(event);
+        return;
+    }
+
     if (incoming_message_.has_credentials_request())
     {
         const proto::internal::CredentialsRequest& request = incoming_message_.credentials_request();
@@ -708,6 +728,8 @@ void UserSession::onIpcMessageReceived(const base::ByteArray& buffer)
                              << is_paused << ")";
 
                 desktop_session_proxy_->setPaused(is_paused);
+                for (const auto& client : desktop_clients_)
+                    static_cast<ClientSessionDesktop*>(client.get())->syncFileClipboard();
                 desktop_session_proxy_->control(is_paused ?
                     proto::internal::DesktopControl::DISABLE :
                     proto::internal::DesktopControl::ENABLE);
@@ -822,6 +844,9 @@ void UserSession::onDesktopSessionStarted()
 //--------------------------------------------------------------------------------------------------
 void UserSession::onDesktopSessionStopped()
 {
+    file_clipboard_desktop_ = false;
+    for (const auto& client : desktop_clients_)
+        static_cast<ClientSessionDesktop*>(client.get())->syncFileClipboard();
     LOG(LS_INFO) << "Desktop session is disconnected (sid=" << session_id_ << ")";
 
     if (type_ == Type::RDP)
@@ -891,6 +916,7 @@ void UserSession::onScreenListChanged(const proto::ScreenList& list)
 //--------------------------------------------------------------------------------------------------
 void UserSession::onScreenTypeChanged(const proto::ScreenType& type)
 {
+    file_clipboard_desktop_ = type.type() == proto::ScreenType::TYPE_DESKTOP;
     LOG(LS_INFO) << "Screen type changed (type=" << type.type() << " name=" << type.name()
                  << " sid=" << session_id_ << ")";
 
@@ -945,6 +971,23 @@ void UserSession::onUnconfirmedSessionReject(uint32_t id)
 }
 
 //--------------------------------------------------------------------------------------------------
+void UserSession::onClientSessionFileClipboard(const proto::ClipboardEvent& event)
+{
+    proto::ClipboardFile message;
+    if (!channel_ || !common::parseFileClipboard(event, &message)) return;
+    if (desktop_session_proxy_->isPaused() || !file_clipboard_desktop_)
+    {
+        // Invalidate outstanding streams on pause, lock or secure-desktop entry.
+        // Keep negotiation in ClientSessionDesktop so a later HELLO can resume it.
+        if (message.type() == proto::ClipboardFile::HELLO)
+            message.set_type(proto::ClipboardFile::DISCONNECT);
+        else if (message.type() != proto::ClipboardFile::DISCONNECT) return;
+    }
+    outgoing_message_.Clear();
+    *outgoing_message_.mutable_file_clipboard_event() = common::fileClipboardEvent(message);
+    channel_->send(serializer_.serialize(outgoing_message_));
+}
+
 void UserSession::onClientSessionConfigured()
 {
     mergeAndSendConfiguration();
@@ -969,6 +1012,10 @@ void UserSession::onClientSessionFinished()
 
                 // Notification of the UI about disconnecting the client.
                 sendDisconnectEvent(client_session->id());
+
+                // End file clipboard routing while its delegate is still alive.
+                if (list == &desktop_clients_)
+                    static_cast<ClientSessionDesktop*>(client_session)->disconnectFileClipboard();
 
                 // Session will be destroyed after completion of the current call.
                 task_runner_->deleteSoon(std::move(*it));

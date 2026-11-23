@@ -117,6 +117,7 @@ void ServerAuthenticatorManager::onComplete()
                     session_info.architecture  = current->peerArch();
                     session_info.user_name     = current->userName();
                     session_info.session_type  = current->sessionType();
+                    session_info.allowed_session_types = current->allowedSessionTypes();
 
                     delegate_->onNewSession(std::move(session_info));
                 }

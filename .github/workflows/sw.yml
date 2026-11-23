@@ -1,14 +1,9 @@
 name: sw
 
+# Original third-party build retained for reference; explicit opt-in only.
+# Automatic preview builds use clipboard-windows.yml.
 on:
-  push:
-    paths:
-      - 'source/**'
-      - '.github/workflows/sw.yml' # for test purposes
-  pull_request:
-    paths:
-      - 'source/**'
-      - '.github/workflows/sw.yml' # for test purposes
+  workflow_dispatch:
 
 jobs:
   windows:
