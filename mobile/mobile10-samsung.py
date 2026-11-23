@@ -62,6 +62,17 @@ def apply(root: Path) -> None:
          '    enum class ShiftState { Off, Once, CapsLock };\n'
          '    ShiftState shift_state_ = ShiftState::Once;')
 
+    # Automatic upper-case display must not turn Ctrl+C, Alt+F or Win+E
+    # into Ctrl+Shift+C and other unexpected shortcuts. Deliberate Shift
+    # from the KeyBar remains available through sticky_modifiers_.
+    view_cc = android / 'desktop_view.cc'
+    once(view_cc,
+         '    bool shift_needed = character.isUpper();',
+         '    const bool command_modifier = sticky_modifiers_.contains(0x0700e0) ||\n'
+         '        sticky_modifiers_.contains(0x0700e2) ||\n'
+         '        sticky_modifiers_.contains(0x0700e3);\n'
+         '    bool shift_needed = character.isUpper() && !command_modifier;')
+
     # Fonts, Samsung artwork and mouse-synthesized Android space swipe.
     once(cc, '#include <QFont>\n',
          '#include <QEvent>\n#include <QFont>\n#include <QLabel>\n'
