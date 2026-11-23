@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.10",
-  "version_code": 20702010,
+  "version": "2.7.2-mobile.11",
+  "version_code": 20702011,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile10 user screenshot-driven keyboard geometry and horizontal-only KeyBar implemented; live Samsung acceptance pending",
+  "build_state": "Mobile11 input queue and subtle Samsung glyph sizing prepared; Android CI and real nested-Aspia test pending",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -31,9 +31,9 @@
   "picker_fix_file": "android-document-picker.patch",
   "picker_fix_sha256": "e5fe9d1f393d2e45411d754e3d41894605b497d7af16f9c7b4fb5b6ce8eba9f4",
   "previous_release": {
-    "version": "2.7.2-mobile.9",
-    "github_run_id": 45082820607,
-    "user_verified": "Samsung S10: physical character input through a nested Aspia desktop session works; KeyBar captions too low and vertical scroll; Samsung language swipe/Shift and utility keys requested."
+    "version": "2.7.2-mobile.10",
+    "github_run_id": 45094132677,
+    "user_verified": "Samsung S10: Shift behavior good; text in nested Aspia intermittently misses taps, remote RU/EN layout does not auto-sync on swipe. Shift/Backspace glyph artwork too large, letter faces too small."
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
   "controls_overlay_sha256": "aef96ebb94d435da8c38e354b87c2fc41b3990d5306daeda373af5809f611083",
@@ -61,5 +61,13 @@
   "mobile10_samsung_overlay_file": "mobile10-samsung.py",
   "mobile10_samsung_overlay_sha256": "68abff258833b1255d98ec831557c182b79ecce70277d4fa2b8cd2b38c723902",
   "mobile10_test_file": "test_mobile10_keyboard.py",
-  "mobile10_test_sha256": "e8fbb2075fcb46c057d7e249cf07a4e34abe44ed41ba9427bc71fe051d926c24"
+  "mobile10_test_sha256": "e8fbb2075fcb46c057d7e249cf07a4e34abe44ed41ba9427bc71fe051d926c24",
+  "mobile11_input_overlay_file": "mobile11-input-stability.py",
+  "mobile11_input_overlay_sha256": "47723cd013ab0f62691b444c8f08932fda4c2ca0fee476dabde2ac474a783b11",
+  "mobile11_visual_overlay_file": "mobile11-visual.py",
+  "mobile11_visual_overlay_sha256": "30725b29722c68abbc27ff1ffc3709981cd6e25ebd550121bfe469783adc8c55",
+  "mobile11_input_test_file": "test_mobile11_input.py",
+  "mobile11_input_test_sha256": "b4c3080c86850c5025f49de553bd513687dbeac6a6d6737f4c58c6e70e90cba2",
+  "mobile11_visual_test_file": "test_mobile11_visual.py",
+  "mobile11_visual_test_sha256": "b10536f8f4ea1928fe9c9dcf5b348527687bd560098036dd7aafd4e00869aed7"
 }
