@@ -59,7 +59,7 @@
   "mobile10_keybar_overlay_file": "mobile10-keybar.py",
   "mobile10_keybar_overlay_sha256": "ecf91b5f96844d06c342b74624a787e8b1284cd44f7aeb0306de08b1705554fd",
   "mobile10_samsung_overlay_file": "mobile10-samsung.py",
-  "mobile10_samsung_overlay_sha256": "246582bf5440b98c08740300b669abfd7b1b1e8d5be3b4503a3fdf960061fc75",
+  "mobile10_samsung_overlay_sha256": "68abff258833b1255d98ec831557c182b79ecce70277d4fa2b8cd2b38c723902",
   "mobile10_test_file": "test_mobile10_keyboard.py",
-  "mobile10_test_sha256": "900d3be6474b5fc2f9e2791fbfd86646c2cfe50315f62f17800a7bdc41f0aceb"
+  "mobile10_test_sha256": "e8fbb2075fcb46c057d7e249cf07a4e34abe44ed41ba9427bc71fe051d926c24"
 }
