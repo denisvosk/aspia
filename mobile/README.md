@@ -1,3 +1,11 @@
+# Aspia+ Mobile 2.7.2-mobile.15
+
+Android-only follow-up to corrected Mobile14. The option to disable remote desktop wallpaper has been removed from the Android settings. Old saved preferences are ignored when establishing an Android session; both legacy 2.7 and modern configurations request that wallpaper remain enabled. Other visual options, session indicators, authentication and audit are unchanged. No Host, Router, Relay or desktop Client/Console source is changed by this overlay.
+
+This does not repair wallpaper already lost after a previous session, and cannot override independent Windows policy or another client's settings. Live testing on Windows remains necessary. The corrected Mobile14 build was still running when this branch was created.
+
+## Previous version
+
 # Aspia+ Mobile 2.7.2-mobile.14
 
 Android-only follow-up to Mobile13. No changes to desktop Console, Host, Router or Relay.

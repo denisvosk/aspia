@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.14",
-  "version_code": 20702014,
+  "version": "2.7.2-mobile.15",
+  "version_code": 20702015,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile14: corrected Qt moc callback setter placement after run 45394554123; popup and experimental clipboard behavior unchanged. Rebuild and real-device verification pending.",
+  "build_state": "Mobile15 source candidate based on corrected Mobile14 (rebuild not yet accepted); Android wallpaper option removed and preservation enforced in legacy and modern outgoing configuration. CI and live Host checks pending.",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -81,5 +81,9 @@
   "mobile14_overlay_file": "mobile14-popup-buffer.py",
   "mobile14_overlay_sha256": "90bb53ad7087fe561df1aeb4ebd047d1d8df67b52afda74599dff0664b74e9f3",
   "mobile14_test_file": "test_mobile14_popup_buffer.py",
-  "mobile14_test_sha256": "ea1486e39f289a40eae34bb81c65cc8741ea0372990ac2138aa7475e254e9b69"
+  "mobile14_test_sha256": "ea1486e39f289a40eae34bb81c65cc8741ea0372990ac2138aa7475e254e9b69",
+  "mobile15_overlay_file": "mobile15-preserve-wallpaper.py",
+  "mobile15_overlay_sha256": "ee18557f32f00b0c3fa6fe4c173cff25dfd73166065abf0445f957907ff6992a",
+  "mobile15_test_file": "test_mobile15_preserve_wallpaper.py",
+  "mobile15_test_sha256": "f0384705cb25798e9ba805050ea250f2104c353e856a640d1354d92f8701693d"
 }
