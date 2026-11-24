@@ -317,6 +317,10 @@ void CompactKeyboard::selectInputMode''')
          '#include <memory>\n#include <functional>\n#include <QString>\n#include <utility>\n')
     once(vh, '    void onSpecialKey(quint32 usb_keycode);',
          '''    void onSpecialKey(quint32 usb_keycode);
+
+public:
+    // Ordinary C++ methods, not Qt slots: moc cannot parse the nested
+    // std::function signature of setBufferHandlers correctly.
     bool queueBufferPaste(const QString& text);
     void cancelBufferInput();
     bool hasCommandModifier() const;

@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile14 source candidate. Popup feedback and experimental clipboard typing. CI and real-device validation pending.",
+  "build_state": "Mobile14: corrected Qt moc callback setter placement after run 45394554123; popup and experimental clipboard behavior unchanged. Rebuild and real-device verification pending.",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -79,7 +79,7 @@
   "mobile13_test_file": "test_mobile13_key_popups.py",
   "mobile13_test_sha256": "bd0e94385c54bc40e9473df8fd495ed5e7fc918bfa3297599afaf0e08397b1fc",
   "mobile14_overlay_file": "mobile14-popup-buffer.py",
-  "mobile14_overlay_sha256": "ded6c0c477a69646ce0f3e73c2318ecd50cd36c8cdeccb54c50bd7d7794aff23",
+  "mobile14_overlay_sha256": "90bb53ad7087fe561df1aeb4ebd047d1d8df67b52afda74599dff0664b74e9f3",
   "mobile14_test_file": "test_mobile14_popup_buffer.py",
-  "mobile14_test_sha256": "5364a77e8db91f4704db812de6a5102ba886cc626d65550d777ffddb89ca0697"
+  "mobile14_test_sha256": "ea1486e39f289a40eae34bb81c65cc8741ea0372990ac2138aa7475e254e9b69"
 }

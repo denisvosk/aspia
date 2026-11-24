@@ -123,6 +123,13 @@ check('appendDraft' not in h and 'sig_draftRequested' not in w and
 check('Clipboard::addFormat(&event, Clipboard::kMimeTypeTextUtf8, text.toUtf8());' in w and
       'onClipboardEvent(event);' in w and 'desktop_config_.clipboard()' in w,
       'send real clipboard event, respect configured permission')
+view_header = (a/'desktop_view.h').read_text(encoding='utf-8')
+slot_region = view_header.split('public slots:', 1)[1].split('signals:', 1)[0]
+slot_body, public_helpers = slot_region.split('\npublic:\n', 1)
+check('setBufferHandlers' not in slot_body and 'std::function' not in slot_body and
+      'void setBufferHandlers(std::function<bool()> allowed,' in public_helpers and
+      'std::function<bool(const QString&)> sender)' in public_helpers,
+      'callback setters must be ordinary C++ methods, not exposed to Qt moc')
 check('stroke.usb_keycode = 0x070019' in v and
       'stroke.modifiers = { 0x0700e0 }' in v and
       v.index('!buffer_sender_(stroke.clipboard_text)') <
