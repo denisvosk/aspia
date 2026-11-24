@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.13",
-  "version_code": 20702013,
+  "version": "2.7.2-mobile.14",
+  "version_code": 20702014,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -18,7 +18,7 @@
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile13 source candidate: Samsung punctuation popup and explicit Russian letter alternatives. CI and real-device validation pending; no signed APK.",
+  "build_state": "Mobile14 source candidate. Popup feedback and experimental clipboard typing. CI and real-device validation pending.",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -31,9 +31,9 @@
   "picker_fix_file": "android-document-picker.patch",
   "picker_fix_sha256": "e5fe9d1f393d2e45411d754e3d41894605b497d7af16f9c7b4fb5b6ce8eba9f4",
   "previous_release": {
-    "version": "2.7.2-mobile.11",
-    "github_run_id": 45143313499,
-    "user_verified": "Mobile11 has signed APK and passing Android 12 CI; Samsung live responsiveness and remote BUF copy not yet accepted"
+    "version": "2.7.2-mobile.13",
+    "github_run_id": 45379773015,
+    "user_verified": "Point popup accepted on Samsung; letter popups and mode hover feedback defective; BUF had no visible input."
   },
   "controls_overlay_file": "upgrade-mobile-controls-v5.py",
   "controls_overlay_sha256": "aef96ebb94d435da8c38e354b87c2fc41b3990d5306daeda373af5809f611083",
@@ -77,5 +77,9 @@
   "mobile13_overlay_file": "mobile13-key-popups.py",
   "mobile13_overlay_sha256": "4910f669c443e48d918a4424809ad4c2d33793e92eec1910c221a1172703c037",
   "mobile13_test_file": "test_mobile13_key_popups.py",
-  "mobile13_test_sha256": "bd0e94385c54bc40e9473df8fd495ed5e7fc918bfa3297599afaf0e08397b1fc"
+  "mobile13_test_sha256": "bd0e94385c54bc40e9473df8fd495ed5e7fc918bfa3297599afaf0e08397b1fc",
+  "mobile14_overlay_file": "mobile14-popup-buffer.py",
+  "mobile14_overlay_sha256": "ded6c0c477a69646ce0f3e73c2318ecd50cd36c8cdeccb54c50bd7d7794aff23",
+  "mobile14_test_file": "test_mobile14_popup_buffer.py",
+  "mobile14_test_sha256": "5364a77e8db91f4704db812de6a5102ba886cc626d65550d777ffddb89ca0697"
 }

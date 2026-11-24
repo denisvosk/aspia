@@ -1,3 +1,17 @@
+# Aspia+ Mobile 2.7.2-mobile.14
+
+Android-only follow-up to Mobile13. No changes to desktop Console, Host, Router or Relay.
+
+- The accepted Samsung-style dot popup and its layout are preserved.
+- Ё/Ъ use a full-sized, bordered popup on the surrounding window, with blue drag selection, explicit tap selection and no automatic letter on long-hold.
+- HID/TXT/BUF: current mode highlighted; dragging highlights the actual target button before release.
+- BUF is no longer a hidden draft. Selecting it explicitly requires acknowledgment of clipboard overwrite and the lack of a legacy clipboard ACK. Each typed character (or queued adjacent text batch) uses the existing clipboard protocol followed by a paced physical Ctrl+V, with a 650 ms settling delay and a 250 ms gap after release. No guaranteed nested-session synchronization is claimed. Clipboard disabled/unavailable: do not send a paste. Passwords and commands should not be entered in BUF.
+- Physical shortcuts and special keys retain the existing queue. Pending clipboard actions are cancelled on app backgrounding, keyboard close, mode change, remote touch or session transition.
+- KeyBar Paste uses the same clipboard path in BUF; HID and TXT retain their existing Unicode paste behavior.
+
+Source candidate only; CI and real-device acceptance required. Successful CI does not prove clipboard delivery on original 2.7 Hosts. Signed APK not produced by this commit.
+
+## Previous version
 # Aspia+ Mobile 2.7.2-mobile.13 — Samsung-style key popups
 
 Source candidate based on Mobile12, without changes to Windows components, Router, Relay or input transport.
