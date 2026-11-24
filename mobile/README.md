@@ -1,3 +1,13 @@
+# Continuous Android development
+
+Keep `feature/mobile15-preserve-wallpaper` as the single mobile development branch.
+Use `.github/workflows/mobile-dev-build.yml` for subsequent builds. Old branches remain historical snapshots.
+The sole final APK version is `mobile/source-lock.json`; increment it for a new installable release, not for every code or CI fix.
+
+The GitHub-hosted runner is ephemeral. Reuse Qt, vcpkg binary archives, verified Qt Android OpenSSL libraries, Gradle dependencies, and a bounded 1 GiB ccache. Qt and vcpkg are saved as soon as preparation succeeds; the compiler cache is also saved after a later build failure. Cache keys are based on dependencies/toolchain instead of the APK version. No signing keys, credentials or complete build trees are cached. Existing APK validation and Android 12 startup testing remain required.
+
+The first optimized run may still be cold; actual cache hits and performance must be measured. Cache eviction and runner image updates can require rebuilding dependencies.
+
 # Aspia+ Mobile 2.7.2-mobile.15
 
 Android-only follow-up to corrected Mobile14. The option to disable remote desktop wallpaper has been removed from the Android settings. Old saved preferences are ignored when establishing an Android session; both legacy 2.7 and modern configurations request that wallpaper remain enabled. Other visual options, session indicators, authentication and audit are unchanged. No Host, Router, Relay or desktop Client/Console source is changed by this overlay.

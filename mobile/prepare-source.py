@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -116,11 +117,38 @@ def main() -> int:
     if hashlib.sha256(mobile15_overlay.read_bytes()).hexdigest() != lock["mobile15_overlay_sha256"]:
         raise RuntimeError("Mobile 15 wallpaper-preservation overlay checksum mismatch")
     run(sys.executable, str(mobile15_overlay), str(output), cwd=output)
+    # Only the final APK version is controlled by source-lock.json.
+    # Historical overlays remain unchanged and hash-pinned.
+    version = lock["version"]
+    code = lock["version_code"]
+    if not re.fullmatch(r"\d+\.\d+\.\d+-mobile\.\d+", version):
+        raise RuntimeError("Invalid mobile version")
+    if type(code) is not int or not 0 < code <= 2100000000:
+        raise RuntimeError("Invalid mobile version code")
+    fields = {
+        output / "CMakePresets.json": (
+            (r'("ASPIA_MOBILE_VERSION_NAME":\s*")[^"]+(")', version),
+            (r'("ASPIA_MOBILE_VERSION_CODE":\s*")[^"]+(")', str(code)),
+        ),
+        output / "source/client/CMakeLists.txt": (
+            (r'(set\(ASPIA_MOBILE_VERSION_NAME\s+")[^"]+("\s+CACHE STRING)', version),
+            (r'(set\(ASPIA_MOBILE_VERSION_CODE\s+")[^"]+("\s+CACHE STRING)', str(code)),
+        ),
+    }
+    for file, patterns in fields.items():
+        original = file.read_text(encoding="utf-8")
+        content = original
+        for pattern, value in patterns:
+            content, count = re.subn(pattern, lambda m: m.group(1) + value + m.group(2), content)
+            if count != 1:
+                raise RuntimeError(f"Expected one APK version field in {file}")
+        if content != original:
+            file.write_text(content, encoding="utf-8")
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
     print(f"Complete Aspia+ Mobile {lock['version']} source is ready: {output}")
-    print("Build instructions: .github/workflows/mobile-v15-build.yml and mobile/README.md")
+    print("Build instructions: .github/workflows/mobile-dev-build.yml and mobile/README.md")
     return 0
 
 

@@ -85,5 +85,5 @@
   "mobile15_overlay_file": "mobile15-preserve-wallpaper.py",
   "mobile15_overlay_sha256": "ee18557f32f00b0c3fa6fe4c173cff25dfd73166065abf0445f957907ff6992a",
   "mobile15_test_file": "test_mobile15_preserve_wallpaper.py",
-  "mobile15_test_sha256": "f0384705cb25798e9ba805050ea250f2104c353e856a640d1354d92f8701693d"
+  "mobile15_test_sha256": "b992fdd2d2fc452a7e7b1719f27595f5a732685dbfe224181f9bc0dbcf994a26"
 }

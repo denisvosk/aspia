@@ -1,11 +1,11 @@
-name: Aspia+ Mobile 2.7.2-mobile.15 APK and startup test
+name: Aspia+ Mobile development - cached APK and startup test
 
 on:
   push:
     branches: ['feature/mobile15-preserve-wallpaper']
     paths:
       - 'mobile/**'
-      - '.github/workflows/mobile-v15-build.yml'
+      - '.github/workflows/mobile-dev-build.yml'
   workflow_dispatch:
 
 permissions:
@@ -14,10 +14,13 @@ permissions:
 
 concurrency:
   group: aspia-mobile-v15-${{ github.ref }}
-  cancel-in-progress: true
+  # Retain the existing group so the current Mobile15 run is not cancelled.
+  cancel-in-progress: false
 
 env:
   QT_VERSION: '6.11.1'
+  NDK_VERSION: '27.2.12479018'
+  JDK_VERSION: '21'
   VCPKG_MAX_CONCURRENCY: '4'
   VCPKG_DISABLE_METRICS: '1'
   GRADLE_OPTS: '-Dorg.gradle.daemon=false'
@@ -26,6 +29,8 @@ jobs:
   android:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
+    outputs:
+      apk_name: ${{ steps.mobile-version.outputs.apk_name }}
     defaults:
       run:
         shell: bash
@@ -38,22 +43,52 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ env.JDK_VERSION }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Cache Gradle downloads for Mobile8 builds
+      - name: Read pinned mobile version and toolchain
+        id: mobile-version
+        working-directory: ${{ github.workspace }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import os
+          import re
+          lock = json.loads(Path("mobile/source-lock.json").read_text(encoding="utf-8"))
+          version = lock["version"]
+          code = lock["version_code"]
+          if not re.fullmatch(r"\d+\.\d+\.\d+-mobile\.\d+", version):
+              raise RuntimeError("Invalid mobile version")
+          if type(code) is not int or not 0 < code <= 2100000000:
+              raise RuntimeError("Invalid Android version code")
+          for field, env in (("qt_version", "QT_VERSION"), ("ndk_version", "NDK_VERSION"),
+                             ("jdk_version", "JDK_VERSION")):
+              if lock[field] != os.environ[env]:
+                  raise RuntimeError(f"Update the pinned workflow toolchain: {field}")
+          if not re.fullmatch(r"[0-9a-f]{40}", lock["vcpkg_commit"]):
+              raise RuntimeError("Invalid pinned vcpkg commit")
+          apk = f"aspia-plus-mobile-{version}-arm64-unsigned.apk"
+          with open(os.environ["GITHUB_ENV"], "a") as out:
+              out.write(f"MOBILE_VERSION={version}\nMOBILE_VERSION_CODE={code}\nAPK_NAME={apk}\n")
+              out.write(f"VCPKG_BINARY_SOURCES=clear;files,{Path.home() / '.cache/vcpkg/archives'},readwrite\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"apk_name={apk}\nvcpkg_commit={lock['vcpkg_commit']}\n")
+          PY
+      - name: Prepare pinned mobile source and startup fix
+        working-directory: ${{ github.workspace }}
+        run: python mobile/prepare-source.py --output mobile-src
+      - name: Cache Gradle dependencies (not APK version)
         uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches/modules-2
             ~/.gradle/wrapper/dists
-          key: mobile13-gradle-${{ runner.os }}-qt6111-jdk21-${{ hashFiles('mobile/source-lock.json') }}-v1
+          key: mobile-gradle-ubuntu24-${{ runner.arch }}-qt${{ env.QT_VERSION }}-jdk${{ env.JDK_VERSION }}-${{ hashFiles('mobile-src/source/client/android/packaging/**/build.gradle*', 'mobile-src/source/client/android/packaging/**/gradle.properties', 'mobile-src/source/client/android/packaging/**/settings.gradle*', 'mobile-src/source/client/android/packaging/**/gradle-wrapper.properties') }}-v2
           restore-keys: |
+            mobile-gradle-ubuntu24-${{ runner.arch }}-qt${{ env.QT_VERSION }}-jdk${{ env.JDK_VERSION }}-
             mobile13-gradle-${{ runner.os }}-qt6111-jdk21-
-      - name: Prepare pinned mobile source and startup fix
-        working-directory: ${{ github.workspace }}
-        run: python mobile/prepare-source.py --output mobile-src
       - name: Guard native Android picker and importer
         run: python "$GITHUB_WORKSPACE/mobile/test_document_picker.py" source/client/android/mobile_book_manager.cc
       - name: Guard mobile 5 remote controls source
@@ -73,11 +108,11 @@ jobs:
       - name: Native build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build pkg-config autoconf automake libtool nasm libgl1-mesa-dev libxkbcommon0
+          sudo apt-get install -y ninja-build pkg-config autoconf automake libtool nasm libgl1-mesa-dev libxkbcommon0 ccache
           python -m pip install 'aqtinstall==3.3.0' 'cmake>=3.30,<4.0'
-      - name: Cache Qt
+      - name: Restore installed Qt
         id: qt-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/Qt
           key: mobile-qt-${{ runner.os }}-${{ env.QT_VERSION }}-android-arm64-v1
@@ -86,6 +121,12 @@ jobs:
         run: |
           aqt install-qt linux desktop "$QT_VERSION" linux_gcc_64 -O "$RUNNER_TEMP/Qt" --archives qtbase qttools qtsvg qttranslations qtdeclarative icu
           aqt install-qt all_os android "$QT_VERSION" android_arm64_v8a -O "$RUNNER_TEMP/Qt" --archives qtbase qttools qtsvg qttranslations
+      - name: Save installed Qt immediately
+        if: steps.qt-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/Qt
+          key: ${{ steps.qt-cache.outputs.cache-primary-key }}
       - name: Provide Android SDK command-line tools
         uses: android-actions/setup-android@v4
         with:
@@ -104,21 +145,65 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
           echo "QT_ANDROID_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/android_arm64_v8a" >> "$GITHUB_ENV"
           echo "QT_HOST_PATH=$RUNNER_TEMP/Qt/$QT_VERSION/gcc_64" >> "$GITHUB_ENV"
-      - name: Cache compiled dependencies
-        uses: actions/cache@v4
+      - name: Restore compiled vcpkg dependencies
+        id: vcpkg-cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.cache/vcpkg/archives
-          key: mobile-vcpkg-${{ runner.os }}-${{ hashFiles('mobile-src/.gitmodules', 'mobile-src/vcpkg.json') }}-ndk27-qt6111-v1
-          restore-keys: mobile-vcpkg-${{ runner.os }}-
-      - name: Build OpenSSL with suffixed SONAMEs at link time
+          key: mobile-vcpkg-ubuntu24-${{ runner.arch }}-qt${{ env.QT_VERSION }}-ndk${{ env.NDK_VERSION }}-${{ steps.mobile-version.outputs.vcpkg_commit }}-${{ hashFiles('mobile-src/.gitmodules', 'mobile-src/vcpkg.json', 'mobile-src/vcpkg-configuration.json') }}-v2
+          restore-keys: |
+            mobile-vcpkg-ubuntu24-${{ runner.arch }}-qt${{ env.QT_VERSION }}-ndk${{ env.NDK_VERSION }}-${{ steps.mobile-version.outputs.vcpkg_commit }}-
+            mobile-vcpkg-${{ runner.os }}-${{ hashFiles('mobile-src/.gitmodules', 'mobile-src/vcpkg.json') }}-ndk27-qt6111-v1
+            mobile-vcpkg-${{ runner.os }}-
+      - name: Restore Qt Android OpenSSL libraries
+        id: tls-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ runner.temp }}/aspia-mobile-tls/libcrypto_3.so
+            ${{ runner.temp }}/aspia-mobile-tls/libssl_3.so
+            ${{ runner.temp }}/aspia-mobile-tls/OpenSSL-LICENSE.txt
+            ${{ runner.temp }}/aspia-mobile-tls/SHA256SUMS
+          key: mobile-tls-ubuntu24-${{ runner.arch }}-ndk${{ env.NDK_VERSION }}-${{ hashFiles('mobile-src/ci/build-android-openssl.sh') }}-v1
+      - name: Build OpenSSL only if verified cache is missing
         run: |
-          ci/build-android-openssl.sh "$RUNNER_TEMP/android-openssl-mobile15"
-          echo "ASPIA_ANDROID_TLS_DIR=$RUNNER_TEMP/android-openssl-mobile15" >> "$GITHUB_ENV"
+          tls_dir="$RUNNER_TEMP/aspia-mobile-tls"
+          mkdir -p "$tls_dir"
+          if ! (cd "$tls_dir" && sha256sum --strict --check SHA256SUMS && test -s libcrypto_3.so && test -s libssl_3.so && test -s OpenSSL-LICENSE.txt); then
+            rm -f "$tls_dir/libcrypto_3.so" "$tls_dir/libssl_3.so" "$tls_dir/OpenSSL-LICENSE.txt" "$tls_dir/SHA256SUMS"
+            ci/build-android-openssl.sh "$tls_dir"
+            (cd "$tls_dir" && sha256sum libcrypto_3.so libssl_3.so OpenSSL-LICENSE.txt > SHA256SUMS)
+          fi
+          echo "ASPIA_ANDROID_TLS_DIR=$tls_dir" >> "$GITHUB_ENV"
+      - name: Restore C and C++ compiler cache
+        id: ccache-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/aspia-ccache
+          key: mobile-ccache-ubuntu24-${{ runner.arch }}-qt${{ env.QT_VERSION }}-ndk${{ env.NDK_VERSION }}-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            mobile-ccache-ubuntu24-${{ runner.arch }}-qt${{ env.QT_VERSION }}-ndk${{ env.NDK_VERSION }}-v1-
+      - name: Configure compiler cache
+        run: |
+          echo "CCACHE_DIR=$RUNNER_TEMP/aspia-ccache" >> "$GITHUB_ENV"
+          echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE/mobile-src" >> "$GITHUB_ENV"
+          echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+          echo "CCACHE_MAXSIZE=1G" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/aspia-ccache" "$HOME/.cache/vcpkg/archives"
+          CCACHE_DIR="$RUNNER_TEMP/aspia-ccache" ccache --zero-stats
       - name: Configure Client only
         run: |
           cmake --preset mobile-android-linux \
-            -DASPIA_MOBILE_VERSION_NAME=2.7.2-mobile.15 \
-            -DASPIA_MOBILE_VERSION_CODE=20702015
+            -DASPIA_MOBILE_VERSION_NAME="$MOBILE_VERSION" \
+            -DASPIA_MOBILE_VERSION_CODE="$MOBILE_VERSION_CODE" \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Save compiled vcpkg dependencies before compiling Aspia
+        if: steps.vcpkg-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.cache/vcpkg/archives
+          key: ${{ steps.vcpkg-cache.outputs.cache-primary-key }}
       - name: Route Gradle Maven Central requests via Google Cloud mirror
         run: |
           # Gradle 9.3.1 (from Qt 6.11.1) supports Maven settings mirrors.
@@ -154,12 +239,12 @@ jobs:
               raise RuntimeError(f'Expected exactly one final unsigned release APK, found {len(candidates)}')
           output = Path('mobile-artifacts')
           output.mkdir(exist_ok=True)
-          apk = output / 'aspia-plus-mobile-2.7.2-mobile.15-arm64-unsigned.apk'
+          apk = output / os.environ['APK_NAME']
           shutil.copyfile(candidates[0], apk)
           workspace = Path(os.environ['GITHUB_WORKSPACE'])
           lock = json.loads((workspace / 'mobile/source-lock.json').read_text())
-          if lock['version'] != '2.7.2-mobile.15' or lock['version_code'] != 20702015:
-              raise RuntimeError('The pinned source lock does not describe mobile.15')
+          if lock['version'] != os.environ['MOBILE_VERSION'] or lock['version_code'] != int(os.environ['MOBILE_VERSION_CODE']):
+              raise RuntimeError('Version differs from the pinned source lock')
           shutil.copyfile(workspace / 'mobile/source-lock.json', output / 'source-lock.json')
           (output / 'source-commit.txt').write_text(subprocess.check_output(
               ['git', '-C', str(workspace), 'rev-parse', 'HEAD'], text=True))
@@ -171,13 +256,23 @@ jobs:
       - name: Validate the final packaged ELF layout and APK metadata
         run: |
           python ci/check-android-apk.py \
-            --apk mobile-artifacts/aspia-plus-mobile-2.7.2-mobile.15-arm64-unsigned.apk \
+            --apk "mobile-artifacts/$APK_NAME" \
             --unsigned \
-            --version-name 2.7.2-mobile.15 \
-            --version-code 20702015 \
+            --version-name "$MOBILE_VERSION" \
+            --version-code "$MOBILE_VERSION_CODE" \
             --sdk-root "$ANDROID_SDK_ROOT" \
             --ndk-root "$ANDROID_NDK_ROOT" \
             --output mobile-artifacts/package-check.json
+      - name: Save verified Qt Android OpenSSL libraries
+        if: steps.tls-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ runner.temp }}/aspia-mobile-tls/libcrypto_3.so
+            ${{ runner.temp }}/aspia-mobile-tls/libssl_3.so
+            ${{ runner.temp }}/aspia-mobile-tls/OpenSSL-LICENSE.txt
+            ${{ runner.temp }}/aspia-mobile-tls/SHA256SUMS
+          key: ${{ steps.tls-cache.outputs.cache-primary-key }}
       - name: Upload the validated unsigned release artifact
         uses: actions/upload-artifact@v4
         with:
@@ -189,10 +284,19 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: aspia-mobile15-package-check-failure
+          name: aspia-mobile-package-check-failure
           path: mobile-src/mobile-artifacts/package-check.json
           retention-days: 14
           if-no-files-found: warn
+      - name: Compiler cache statistics
+        if: always() && steps.ccache-restore.outcome == 'success'
+        run: ccache --show-stats
+      - name: Save compiler cache even after a later build error
+        if: always() && steps.ccache-restore.outcome == 'success' && steps.ccache-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/aspia-ccache
+          key: ${{ steps.ccache-restore.outputs.cache-primary-key }}
 
   android-startup:
     name: Android 12 ARM64 startup on KVM
@@ -201,7 +305,8 @@ jobs:
     timeout-minutes: 20
     env:
       EMULATOR_API: '31'
-      EMULATOR_AVD: aspia-mobile15-api31
+      EMULATOR_AVD: aspia-mobile-dev-api31
+      APK_NAME: ${{ needs.android.outputs.apk_name }}
       ANDROID_AVD_HOME: ${{ github.workspace }}/aspia-smoke-avd
       ANDROID_EMULATOR_HOME: ${{ github.workspace }}/aspia-smoke-emulator
     steps:
@@ -212,7 +317,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ env.JDK_VERSION }}
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -265,7 +370,7 @@ jobs:
         run: |
           python mobile/ci-startup-smoke.py \
             --sdk-root "$ANDROID_HOME" \
-            --apk release-apk/aspia-plus-mobile-2.7.2-mobile.15-arm64-unsigned.apk \
+            --apk "release-apk/$APK_NAME" \
             --avd "$EMULATOR_AVD" \
             --output startup-evidence \
             --boot-timeout 600 \
@@ -274,7 +379,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: aspia-mobile15-api31-startup-evidence
+          name: aspia-mobile-api31-startup-evidence
           path: startup-evidence
           retention-days: 14
           if-no-files-found: warn

@@ -4,6 +4,7 @@ Live Windows 2.7 and modern Host tests are still required.
 """
 from pathlib import Path
 import sys
+import json
 
 root = Path(sys.argv[1]).resolve()
 a = root / "source/client/android"
@@ -31,5 +32,9 @@ assert 'tr("Enable clipboard")' in s
 assert 'tr("Disable desktop effects")' in s
 assert 'tr("Lock computer at disconnect")' in s
 assert 'tr("Block remote input")' in s
-assert "2.7.2-mobile.15" in (root / "CMakePresets.json").read_text(encoding="utf-8")
+lock = json.loads((Path(__file__).resolve().parent / "source-lock.json").read_text(encoding="utf-8"))
+presets = json.loads((root / "CMakePresets.json").read_text(encoding="utf-8"))
+mobile = next(p for p in presets["configurePresets"] if p["name"] == "mobile-android-linux")
+assert mobile["cacheVariables"]["ASPIA_MOBILE_VERSION_NAME"] == lock["version"]
+assert mobile["cacheVariables"]["ASPIA_MOBILE_VERSION_CODE"] == str(lock["version_code"])
 print("PASS: Mobile15 wallpaper preserved; other remote desktop options unchanged")
