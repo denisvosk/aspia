@@ -104,11 +104,15 @@ def main() -> int:
     if hashlib.sha256(mobile12_overlay.read_bytes()).hexdigest() != lock["mobile12_overlay_sha256"]:
         raise RuntimeError("Mobile 12 input mode and punctuation overlay checksum mismatch")
     run(sys.executable, str(mobile12_overlay), str(output), cwd=output)
+    mobile13_overlay = bundle / lock["mobile13_overlay_file"]
+    if hashlib.sha256(mobile13_overlay.read_bytes()).hexdigest() != lock["mobile13_overlay_sha256"]:
+        raise RuntimeError("Mobile 13 Samsung key popup overlay checksum mismatch")
+    run(sys.executable, str(mobile13_overlay), str(output), cwd=output)
     if not args.no_submodules:
         run("git", "submodule", "sync", "--recursive", cwd=output)
         run("git", "submodule", "update", "--init", "--recursive", cwd=output)
     print(f"Complete Aspia+ Mobile {lock['version']} source is ready: {output}")
-    print("Build instructions: .github/workflows/mobile-v12-build.yml and mobile/README.md")
+    print("Build instructions: .github/workflows/mobile-v13-build.yml and mobile/README.md")
     return 0
 
 

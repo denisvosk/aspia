@@ -1,7 +1,7 @@
 {
   "product": "Aspia+ Mobile",
-  "version": "2.7.2-mobile.12",
-  "version_code": 20702012,
+  "version": "2.7.2-mobile.13",
+  "version_code": 20702013,
   "application_id": "org.aspiaplus.client",
   "architecture": "arm64-v8a",
   "minimum_android_sdk": 31,
@@ -14,11 +14,11 @@
   "qt_version": "6.11.1",
   "ndk_version": "27.2.12479018",
   "jdk_version": "21",
-  "release_date": "2026-11-23",
+  "release_date": "2026-11-24",
   "signing_certificate_sha256": "9cbb086bc631621623b99fc77957ccbd932ff4a83b7436c2d05d3e9e4891a71c",
   "overlay_file": "upgrade-mobile-v2.py",
   "overlay_sha256": "91c8d1f446bcfbf2d10807c7b01c597f71c673f421c2216a5625e151da910654",
-  "build_state": "Mobile12 input-mode switching now requires a 500ms hold and explicit popup choice; CI and Samsung real-device acceptance pending.",
+  "build_state": "Mobile13 source candidate: Samsung punctuation popup and explicit Russian letter alternatives. CI and real-device validation pending; no signed APK.",
   "book_transfer": "local_aab_only",
   "startup_fix_file": "startup-fix.patch",
   "startup_fix_sha256": "580c934f26e66a30f68265d0e1325ad228efac3396ad37594c252b219ea34c44",
@@ -73,5 +73,9 @@
   "mobile12_overlay_file": "mobile12-input-modes.py",
   "mobile12_overlay_sha256": "af08a7a5cde1e88c838563b7c7ddf6ed8b96389567177641b622965042aa638e",
   "mobile12_test_file": "test_mobile12_input_modes.py",
-  "mobile12_test_sha256": "8783306b85d49e3dd2edd113dd52872d66343fe5f7d287c2ce7a4f7147553c85"
+  "mobile12_test_sha256": "8783306b85d49e3dd2edd113dd52872d66343fe5f7d287c2ce7a4f7147553c85",
+  "mobile13_overlay_file": "mobile13-key-popups.py",
+  "mobile13_overlay_sha256": "4910f669c443e48d918a4424809ad4c2d33793e92eec1910c221a1172703c037",
+  "mobile13_test_file": "test_mobile13_key_popups.py",
+  "mobile13_test_sha256": "bd0e94385c54bc40e9473df8fd495ed5e7fc918bfa3297599afaf0e08397b1fc"
 }

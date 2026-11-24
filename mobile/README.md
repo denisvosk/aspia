@@ -1,3 +1,20 @@
+# Aspia+ Mobile 2.7.2-mobile.13 — Samsung-style key popups
+
+Source candidate based on Mobile12, without changes to Windows components, Router, Relay or input transport.
+
+- Dot short tap: period. Long hold: five columns and three row-heights, with two selectable rows separated by an empty middle row.
+- Top row: `: ^ % $ #`; bottom row: `@ ' ! ? ,`. Colon replaces the Samsung pencil/customization icon. The comma cell is aligned directly above the period.
+- Hold and slide, release over a symbol to choose it. The Mobile12 stationary hold/release shortcut for comma is retained; release outside the menu cancels.
+- In Russian layout, long hold Е or Ь opens a visible popup showing ё/Ё or ъ/Ъ according to Shift. No automatic insertion. Slide onto the alternative or release on the original key and explicitly tap the visible choice. Short taps enter ordinary Е/Ь.
+- Popups do not take focus, are dismissed by other keys, closing the keyboard or resizing. One-shot Shift is consumed only after an alternative letter is selected.
+- HID/TXT/BUF, key bar, keyboard layout and existing transport code are unchanged.
+
+Build uses `mobile/prepare-source.py` and `.github/workflows/mobile-v13-build.yml`.
+The source checks and Android startup smoke test do not replace real-device testing.
+No signed APK or stable release is implied by this source candidate.
+
+## Previous base: Mobile12
+
 # Aspia+ Mobile 2.7.2-mobile.12 — три режима ввода и удержание точки
 
 **Экспериментальная Android-сборка**, основана на Mobile 11. Настольные
